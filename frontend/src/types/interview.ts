@@ -2,6 +2,26 @@ export type InterviewSource = "resume" | "role";
 export type InterviewMode = "standard" | "dynamic";
 export type AnswerMethod = "voice" | "text";
 
+export type InterviewState =
+  | "idle"
+  | "ai_speaking"
+  | "ready_to_record"
+  | "transcribing"
+  | "reviewing_transcript"
+  | "submitting"
+  | "evaluating";
+
+export interface FinalEvaluation {
+  overall_score: number;
+  technical_knowledge: number;
+  communication: number;
+  problem_solving: number;
+  confidence_clarity: number;
+  strengths: string[];
+  areas_to_improve: string[];
+  summary: string;
+}
+
 export interface InterviewConfig {
   source: InterviewSource;
   resumeFile: File | null;
@@ -10,6 +30,7 @@ export interface InterviewConfig {
   mode: InterviewMode;
   durationMinutes: number;
   questionCount: number;
+  allowTyping: boolean;
 }
 
 export interface ChatMessage {
@@ -35,17 +56,19 @@ export interface InterviewResult {
 
 export interface StartInterviewPayload {
   source: InterviewSource;
-  role?: string;
-  skills?: string[];
+  role: string;
+  skills: string[];
   mode: InterviewMode;
-  duration_minutes: number;
+  duration: number;
   question_count: number;
 }
 
 export interface StartInterviewResponse {
   session_id: string;
-  first_question: string;
+  question_number: number;
   total_questions: number;
+  question: string;
+  is_complete: boolean;
 }
 
 export interface SubmitAnswerPayload {
@@ -57,4 +80,5 @@ export interface SubmitAnswerResponse {
   next_question: string | null;
   question_number: number;
   is_complete: boolean;
+  final_evaluation?: FinalEvaluation;
 }

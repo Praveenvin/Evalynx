@@ -1,7 +1,7 @@
 import { Bot, User } from "lucide-react";
 import type { ChatMessage as ChatMessageType } from "../types/interview";
 
-export default function ChatMessage({ message }: { message: ChatMessageType }) {
+export default function ChatMessage({ message, speaking }: { message: ChatMessageType, speaking?: boolean }) {
   const isInterviewer = message.role === "interviewer";
 
   return (
@@ -27,6 +27,13 @@ export default function ChatMessage({ message }: { message: ChatMessageType }) {
         }`}
       >
         {message.content}
+        {speaking && (
+          <span className="ml-2 inline-flex items-center gap-1 opacity-70">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" style={{ animationDelay: "0ms" }} />
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" style={{ animationDelay: "150ms" }} />
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" style={{ animationDelay: "300ms" }} />
+          </span>
+        )}
       </div>
     </div>
   );

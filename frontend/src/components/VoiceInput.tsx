@@ -1,68 +1,171 @@
-import { useRef, useState } from "react";
-import { Mic, Square } from "lucide-react";
-import { transcribeVoice } from "../services/interviewApi";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-interface VoiceInputProps {
-  onTranscribed: (text: string) => void;
+interface VoiceRecorderState {
+  isRecording: boolean;
+  audioBlob: Blob | null;
+  error: string | null;
 }
 
-export default function VoiceInput({ onTranscribed }: VoiceInputProps) {
-  const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
+export function useVoiceRecorder() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
-  const startRecording = async () => {
+  const [state, setState] = useState<VoiceRecorderState>({
+    isRecording: false,
+    audioBlob: null,
+    error: null,
+  });
+
+  const startRecording = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      setState({
+        isRecording: false,
+        audioBlob: null,
+        error: null,
+      });
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error(
+          "Voice recording is not supported by this browser."
+        );
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+
+      streamRef.current = stream;
       chunksRef.current = [];
 
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
+      const mimeType = MediaRecorder.isTypeSupported(
+        "audio/webm;codecs=opus"
+      )
+        ? "audio/webm;codecs=opus"
+        : "audio/webm";
 
-      recorder.onstop = async () => {
-        stream.getTracks().forEach((track) => track.stop());
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-        setIsTranscribing(true);
-        try {
-          const { text } = await transcribeVoice(blob);
-          onTranscribed(text);
-        } catch {
-          // Transcription backend isn't connected yet — the user can
-          // still type their answer directly.
-        } finally {
-          setIsTranscribing(false);
+      const recorder = new MediaRecorder(stream, {
+        mimeType,
+      });
+
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
         }
       };
 
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, {
+          type: recorder.mimeType || "audio/webm",
+        });
+
+        setState({
+          isRecording: false,
+          audioBlob: blob,
+          error: null,
+        });
+
+        stream.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      };
+
+      recorder.onerror = () => {
+        setState((previous) => ({
+          ...previous,
+          isRecording: false,
+          error: "Recording failed.",
+        }));
+
+        stream.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      };
+
       recorder.start();
-      mediaRecorderRef.current = recorder;
-      setIsRecording(true);
-    } catch {
-      // Microphone permission denied or unavailable.
+
+      setState({
+        isRecording: true,
+        audioBlob: null,
+        error: null,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not access the microphone.";
+
+      setState({
+        isRecording: false,
+        audioBlob: null,
+        error: message,
+      });
     }
-  };
+  }, []);
 
-  const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
-    setIsRecording(false);
-  };
+  const stopRecording = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
 
-  return (
-    <button
-      type="button"
-      onClick={isRecording ? stopRecording : startRecording}
-      disabled={isTranscribing}
-      aria-label={isRecording ? "Stop recording" : "Record voice answer"}
-      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-colors duration-150 ${
-        isRecording
-          ? "border-weak bg-weak-soft text-weak"
-          : "border-border text-ink-soft hover:border-border-strong hover:bg-canvas"
-      } disabled:opacity-50`}
-    >
-      {isRecording ? <Square size={16} /> : <Mic size={17} />}
-    </button>
-  );
+    if (
+      recorder &&
+      recorder.state !== "inactive"
+    ) {
+      recorder.stop();
+    }
+  }, []);
+
+  const cancelRecording = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+
+    if (
+      recorder &&
+      recorder.state !== "inactive"
+    ) {
+      recorder.ondataavailable = null;
+      recorder.onstop = null;
+      recorder.onerror = null;
+      recorder.stop();
+    }
+
+    chunksRef.current = [];
+
+    streamRef.current?.getTracks().forEach((track) => {
+      track.stop();
+    });
+
+    streamRef.current = null;
+    mediaRecorderRef.current = null;
+
+    setState({
+      isRecording: false,
+      audioBlob: null,
+      error: null,
+    });
+  }, []);
+
+  const clearRecording = useCallback(() => {
+    setState({
+      isRecording: false,
+      audioBlob: null,
+      error: null,
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      streamRef.current?.getTracks().forEach((track) => {
+        track.stop();
+      });
+    };
+  }, []);
+
+  return {
+    isRecording: state.isRecording,
+    audioBlob: state.audioBlob,
+    error: state.error,
+    startRecording,
+    stopRecording,
+    cancelRecording,
+    clearRecording,
+  };
 }

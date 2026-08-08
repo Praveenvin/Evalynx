@@ -25,6 +25,7 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
   const [mode, setMode] = useState<InterviewMode>("standard");
   const [duration, setDuration] = useState(30);
   const [questionCount, setQuestionCount] = useState(10);
+  const [allowTyping, setAllowTyping] = useState(true);
 
   const addSkill = () => {
     const trimmed = skillInput.trim();
@@ -217,12 +218,25 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
 
       {/* Answer method */}
       <section className="rounded-2xl border border-border bg-surface p-5 sm:p-6">
-        <h3 className="text-sm font-semibold text-ink">Answer Method</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-ink">Answer Method</h3>
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={allowTyping}
+              onChange={(e) => setAllowTyping(e.target.checked)}
+              className="h-4 w-4 accent-accent"
+            />
+            <span className="text-sm text-ink-soft">Allow typing</span>
+          </label>
+        </div>
         <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-accent-soft px-3 py-2 text-sm font-medium text-accent-hover">
-          Voice + Text
+          {allowTyping ? "Voice + Text" : "Voice Only"}
         </div>
         <p className="mt-2 text-xs text-ink-faint">
-          Speak your answer or type it — both are available during the interview.
+          {allowTyping
+            ? "Speak your answer or type it — both are available during the interview."
+            : "Speak your answer using your microphone. Typing is disabled."}
         </p>
       </section>
 
@@ -238,6 +252,7 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
             mode,
             durationMinutes: duration,
             questionCount,
+            allowTyping,
           })
         }
         className="w-full sm:w-auto sm:self-end"

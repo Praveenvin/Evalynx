@@ -1,8 +1,13 @@
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
+
 from app.api.resume_screening import (
     router as resume_screening_router,
+)
+
+from app.api.mock_interview import (
+    router as mock_interview_router,
 )
 
 
@@ -13,6 +18,12 @@ app = FastAPI(
     ),
     version="1.0.0",
 )
+
+
+# -------------------------------------------------------------------
+# CORS
+# -------------------------------------------------------------------
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -23,10 +34,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# -------------------------------------------------------------------
+# API Routers
+# -------------------------------------------------------------------
+
 app.include_router(
     resume_screening_router
 )
 
+app.include_router(
+    mock_interview_router
+)
+
+
+# -------------------------------------------------------------------
+# Root
+# -------------------------------------------------------------------
 
 @app.get("/")
 def root():
@@ -35,6 +59,10 @@ def root():
     }
 
 
+# -------------------------------------------------------------------
+# Health Check
+# -------------------------------------------------------------------
+
 @app.get("/health")
 def health():
     return {
@@ -42,7 +70,20 @@ def health():
     }
 
 
+# -------------------------------------------------------------------
+# Custom OpenAPI
+#
+# FastAPI 0.141+ can describe UploadFile arrays as:
+# string + contentMediaType=application/octet-stream.
+#
+# We convert those items to:
+# string + format=binary
+#
+# This makes Swagger UI display the actual file upload control.
+# -------------------------------------------------------------------
+
 def custom_openapi():
+
     if app.openapi_schema:
         return app.openapi_schema
 
@@ -55,21 +96,21 @@ def custom_openapi():
         routes=app.routes,
     )
 
-    schemas = openapi_schema.get(
-        "components",
-        {},
-    ).get(
-        "schemas",
-        {},
+    schemas = (
+        openapi_schema
+        .get("components", {})
+        .get("schemas", {})
     )
 
     for schema in schemas.values():
+
         properties = schema.get(
             "properties",
             {},
         )
 
         for property_schema in properties.values():
+
             if property_schema.get("type") != "array":
                 continue
 
@@ -83,6 +124,7 @@ def custom_openapi():
                 and items.get("contentMediaType")
                 == "application/octet-stream"
             ):
+
                 items.pop(
                     "contentMediaType",
                     None,
