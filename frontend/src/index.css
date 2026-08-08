@@ -1,0 +1,59 @@
+@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap");
+
+@theme {
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-canvas: #fafafc;
+  --color-surface: #ffffff;
+  --color-border: #e7e5f0;
+  --color-border-strong: #d9d6e8;
+
+  --color-ink: #17141f;
+  --color-ink-soft: #55506a;
+  --color-ink-faint: #928da8;
+
+  --color-accent: #6d5ae6;
+  --color-accent-hover: #5a47d1;
+  --color-accent-soft: #f1eefd;
+  --color-accent-soft-hover: #e6e0fb;
+  --color-accent-ring: #c8beed;
+
+  --color-good: #1f8a5f;
+  --color-good-soft: #e9f7f0;
+  --color-warn: #b8860f;
+  --color-warn-soft: #fbf3df;
+  --color-weak: #b5495b;
+  --color-weak-soft: #fbebee;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+::selection {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent-hover);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
