@@ -49,6 +49,7 @@ def start_interview(
     mode: str,
     duration_minutes: int,
     question_count: int,
+    api_key: str | None = None,
 ) -> tuple[InterviewSession, str]:
     session = create_session(
         source=source,
@@ -58,17 +59,18 @@ def start_interview(
         mode=mode,
         duration_minutes=duration_minutes,
         total_questions=question_count,
+        api_key=api_key,
     )
 
     if mode == "standard":
         bank = _generate_question_bank(
-            role=role, skills=skills, resume_text=resume_text, question_count=question_count
+            role=role, skills=skills, resume_text=resume_text, question_count=question_count, api_key=api_key
         )
         session.question_bank = bank
         first_question = bank[0] if bank else _fallback_question(role)
     else:
         first_question = _generate_first_question(
-            role=role, skills=skills, resume_text=resume_text, mode=mode
+            role=role, skills=skills, resume_text=resume_text, mode=mode, api_key=api_key
         )
 
     session.current_question_number = 1
@@ -91,6 +93,7 @@ def submit_answer(session_id: str, answer: str) -> dict:
         skills=session.skills,
         question=current_turn.question,
         answer=answer,
+        api_key=session.api_key,
     )
     current_turn.evaluation = evaluation
 
@@ -127,6 +130,7 @@ def build_final_evaluation(session: InterviewSession) -> dict:
             build_final_summary_prompt(role=session.role, per_answer_evaluations=evaluations),
             temperature=0.5,
             max_tokens=500,
+            api_key=session.api_key,
         )
         strengths = summary_response.get("strengths", [])
         improvements = summary_response.get("areas_to_improve", [])
@@ -153,7 +157,7 @@ def build_final_evaluation(session: InterviewSession) -> dict:
 
 
 def _generate_first_question(
-    *, role: str, skills: list[str], resume_text: str | None, mode: str
+    *, role: str, skills: list[str], resume_text: str | None, mode: str, api_key: str | None = None
 ) -> str:
     try:
         return chat_completion(
@@ -162,6 +166,7 @@ def _generate_first_question(
             ),
             temperature=0.7,
             max_tokens=150,
+            api_key=api_key,
         ).strip()
     except GroqServiceError:
         logger.warning("First question generation failed, using fallback question")
@@ -169,7 +174,7 @@ def _generate_first_question(
 
 
 def _generate_question_bank(
-    *, role: str, skills: list[str], resume_text: str | None, question_count: int
+    *, role: str, skills: list[str], resume_text: str | None, question_count: int, api_key: str | None = None
 ) -> list[str]:
     try:
         data = chat_completion_json(
@@ -181,6 +186,7 @@ def _generate_question_bank(
             ),
             temperature=0.7,
             max_tokens=1200,
+            api_key=api_key,
         )
         questions = [q for q in data.get("questions", []) if isinstance(q, str) and q.strip()]
         if questions:
@@ -211,18 +217,20 @@ def _next_question(session: InterviewSession) -> str:
             ),
             temperature=0.7,
             max_tokens=150,
+            api_key=session.api_key,
         ).strip()
     except GroqServiceError:
         logger.warning("Dynamic next-question generation failed, using fallback question")
         return _fallback_question(session.role)
 
 
-def _evaluate_answer(*, role: str, skills: list[str], question: str, answer: str) -> dict:
+def _evaluate_answer(*, role: str, skills: list[str], question: str, answer: str, api_key: str | None = None) -> dict:
     try:
         result = chat_completion_json(
             build_answer_evaluation_prompt(role=role, skills=skills, question=question, answer=answer),
             temperature=0.3,
             max_tokens=500,
+            api_key=api_key,
         )
         return {
             "score": int(result.get("score", 0)),

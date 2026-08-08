@@ -28,6 +28,7 @@ class BatchScreeningService:
         directory: str,
         job_description: str,
         top_k: int = 5,
+        api_key: str | None = None,
     ) -> list[dict]:
 
         directory_path = Path(directory)
@@ -64,6 +65,7 @@ class BatchScreeningService:
                     groq_service.evaluate_candidate(
                         job_description=job_description,
                         evidence=evidence,
+                        api_key=api_key,
                     )
                 )
 

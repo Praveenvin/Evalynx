@@ -32,6 +32,10 @@ async def screen_resumes(
         list[UploadFile],
         File(),
     ],
+    groq_api_key: Annotated[
+        str | None,
+        Form(),
+    ] = None,
 ):
     if not resumes:
         raise HTTPException(
@@ -64,6 +68,7 @@ async def screen_resumes(
             directory=str(temp_dir),
             job_description=job_description,
             top_k=5,
+            api_key=groq_api_key,
         )
 
         return {

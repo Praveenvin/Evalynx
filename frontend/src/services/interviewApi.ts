@@ -4,6 +4,7 @@ import type {
   StartInterviewPayload,
   StartInterviewResponse,
   SubmitAnswerResponse,
+  FinalEvaluation,
 } from "../types/interview";
 
 export async function startInterview(
@@ -18,6 +19,10 @@ export async function startInterview(
   formData.append("mode", payload.mode);
   formData.append("duration", String(payload.duration));
   formData.append("question_count", String(payload.question_count));
+
+  if (payload.groq_api_key) {
+    formData.append("groq_api_key", payload.groq_api_key);
+  }
 
   if (resumeFile) {
     formData.append("resume", resumeFile);
@@ -167,7 +172,7 @@ export async function fetchQuestionAudio(
  */
 export async function completeInterview(
   sessionId: string,
-) {
+): Promise<FinalEvaluation> {
   const response = await fetch(
     `${API_BASE_URL}/api/mock-interview/${sessionId}/complete`,
     {
@@ -175,5 +180,5 @@ export async function completeInterview(
     },
   );
 
-  return parseJsonOrThrow(response);
+  return parseJsonOrThrow<FinalEvaluation>(response);
 }

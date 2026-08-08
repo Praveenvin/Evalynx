@@ -4,6 +4,7 @@ import type {
   InterviewConfig,
   InterviewMode,
   InterviewSource,
+  ApiProvider,
 } from "../types/interview";
 import FileUpload from "./FileUpload";
 import FileList from "./FileList";
@@ -26,6 +27,8 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
   const [duration, setDuration] = useState(30);
   const [questionCount, setQuestionCount] = useState(10);
   const [allowTyping, setAllowTyping] = useState(true);
+  const [apiProvider, setApiProvider] = useState<ApiProvider>("custom");
+  const [groqApiKey, setGroqApiKey] = useState("");
 
   const addSkill = () => {
     const trimmed = skillInput.trim();
@@ -35,7 +38,8 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
     setSkillInput("");
   };
 
-  const canStart = source === "role" ? role.trim().length > 0 : !!resumeFile;
+  const hasNonAsciiKey = apiProvider === "custom" && /[^\x00-\x7F]/.test(groqApiKey);
+  const canStart = (source === "role" ? role.trim().length > 0 : !!resumeFile) && !hasNonAsciiKey;
 
   return (
     <div className="flex flex-col gap-6">
@@ -240,6 +244,112 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
         </p>
       </section>
 
+      {/* API Provider */}
+      <section className="rounded-2xl border border-border bg-surface p-5 sm:p-6">
+        <h3 className="text-sm font-semibold text-ink">AI Provider</h3>
+        <div className="mt-3 grid grid-cols-1 gap-3">
+          <button
+            onClick={() => setApiProvider("custom")}
+            className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-colors ${
+              apiProvider === "custom"
+                ? "border-accent bg-accent-soft"
+                : "border-border hover:border-border-strong"
+            }`}
+          >
+            <div
+              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                apiProvider === "custom"
+                  ? "border-accent bg-accent"
+                  : "border-ink-faint"
+              }`}
+            >
+              {apiProvider === "custom" && (
+                <div className="h-2 w-2 rounded-full bg-white" />
+              )}
+            </div>
+            <div className="flex-1">
+              <span className="flex items-center gap-2 text-sm font-medium text-ink">
+                Use my Groq API Key
+                <span className="rounded bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent">
+                  Recommended
+                </span>
+              </span>
+              <span className="mt-0.5 block text-xs text-ink-soft">
+                Best and most reliable experience.
+              </span>
+            </div>
+          </button>
+
+          {apiProvider === "custom" && (
+            <div className="ml-7 mt-1 max-w-sm">
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-faint">
+                Groq API Key
+              </label>
+              <input
+                type="password"
+                placeholder="Enter your Groq API key"
+                value={groqApiKey}
+                onChange={(e) => setGroqApiKey(e.target.value)}
+                className={`w-full rounded-lg border bg-canvas px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent ${
+                  hasNonAsciiKey
+                    ? "border-warn focus:border-warn"
+                    : "border-border"
+                }`}
+              />
+              {hasNonAsciiKey ? (
+                <p className="mt-1.5 text-xs font-medium text-warn">
+                  ⚠ Your key contains invalid characters (e.g. an em dash instead of a
+                  hyphen). This happens when autocorrect is active. Please re-copy the
+                  key directly from{" "}
+                  <a
+                    href="https://console.groq.com/keys"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    console.groq.com
+                  </a>
+                  .
+                </p>
+              ) : (
+                <p className="mt-1.5 text-xs text-ink-faint">
+                  Your key is used only for this interview and is not stored.
+                </p>
+              )}
+            </div>
+          )}
+
+          <button
+            onClick={() => setApiProvider("builtin")}
+            className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-colors ${
+              apiProvider === "builtin"
+                ? "border-accent bg-accent-soft"
+                : "border-border hover:border-border-strong"
+            }`}
+          >
+            <div
+              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                apiProvider === "builtin"
+                  ? "border-accent bg-accent"
+                  : "border-ink-faint"
+              }`}
+            >
+              {apiProvider === "builtin" && (
+                <div className="h-2 w-2 rounded-full bg-white" />
+              )}
+            </div>
+            <div>
+              <span className="block text-sm font-medium text-ink">
+                Use Evalynx Built-in API
+              </span>
+              <span className="mt-0.5 block text-xs text-ink-soft">
+                No API key required. Availability may be limited during high usage.
+              </span>
+            </div>
+          </button>
+        </div>
+      </section>
+
       <Button
         size="md"
         disabled={!canStart}
@@ -253,6 +363,8 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
             durationMinutes: duration,
             questionCount,
             allowTyping,
+            apiProvider,
+            groqApiKey: apiProvider === "custom" ? groqApiKey : undefined,
           })
         }
         className="w-full sm:w-auto sm:self-end"

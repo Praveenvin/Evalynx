@@ -10,28 +10,29 @@ load_dotenv()
 
 class GroqService:
     def __init__(self):
-        api_key = os.getenv("GROQ_API_KEY")
-        model = os.getenv(
+        self._builtin_api_key = os.getenv("GROQ_API_KEY")
+        self.model = os.getenv(
             "GROQ_MODEL",
             "llama-3.3-70b-versatile",
         )
 
-        if not api_key:
+    def _get_client(self, api_key: str | None = None) -> Groq:
+        """Return a Groq client using the provided key, or the built-in key."""
+        key = api_key or self._builtin_api_key
+        if not key:
             raise ValueError(
-                "GROQ_API_KEY is not configured."
+                "GROQ_API_KEY is not configured and no API key was provided."
             )
-
-        self.client = Groq(
-            api_key=api_key
-        )
-
-        self.model = model
+        return Groq(api_key=key)
 
     def evaluate_candidate(
         self,
         job_description: str,
         evidence: list[dict],
+        api_key: str | None = None,
     ) -> dict:
+
+        client = self._get_client(api_key)
 
         evidence_text = "\n\n".join(
             [
@@ -83,7 +84,7 @@ CANDIDATE RESUME EVIDENCE:
 {evidence_text}
 """
 
-        response = self.client.chat.completions.create(
+        response = client.chat.completions.create(
             model=self.model,
             messages=[
                 {

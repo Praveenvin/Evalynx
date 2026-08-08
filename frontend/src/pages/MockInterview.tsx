@@ -11,6 +11,7 @@ import {
   startInterview,
   submitAnswer,
   submitVoiceAnswer,
+  completeInterview,
 } from "../services/interviewApi";
 import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
 import { ApiError } from "../services/api";
@@ -39,6 +40,8 @@ export default function MockInterview() {
   const [chatError, setChatError] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [allowTyping, setAllowTyping] = useState(true);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   const [result, setResult] = useState<FinalEvaluation | null>(null);
 
@@ -54,6 +57,35 @@ export default function MockInterview() {
       cancel();
     };
   }, [cancel]);
+
+  useEffect(() => {
+    if (stage !== "chat" || timeLeft === null) return;
+    if (timeLeft <= 0) {
+      handleTimeUp();
+      return;
+    }
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => (prev ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [stage, timeLeft]);
+
+  const handleTimeUp = async () => {
+    if (!sessionId) return;
+    setInterviewState("evaluating");
+    setChatError(null);
+    try {
+      const response = await completeInterview(sessionId);
+      setResult(response);
+      setStage("result");
+    } catch (err) {
+      setChatError(
+        err instanceof ApiError
+          ? err.message
+          : "Time is up, but couldn't fetch the final result."
+      );
+    }
+  };
 
   const playQuestionAudio = (text: string) => {
     if (isMuted) {
@@ -74,6 +106,8 @@ export default function MockInterview() {
           mode: config.mode,
           duration: config.durationMinutes,
           question_count: config.questionCount,
+          api_provider: config.apiProvider,
+          groq_api_key: config.groqApiKey,
         },
         config.resumeFile
       );
@@ -83,6 +117,7 @@ export default function MockInterview() {
       setQuestionNumber(response.question_number);
       setCurrentQuestion(response.question);
       setAllowTyping(config.allowTyping);
+      setTimeLeft(config.durationMinutes * 60);
       setMessages([
         { id: crypto.randomUUID(), role: "interviewer", content: response.question },
       ]);
@@ -153,6 +188,7 @@ export default function MockInterview() {
         { id: crypto.randomUUID(), role: "interviewer", content: nextQuestion },
       ]);
       playQuestionAudio(nextQuestion);
+      setInterviewState("idle");
     } catch (err) {
       setChatError(
         err instanceof ApiError
@@ -232,10 +268,17 @@ export default function MockInterview() {
               <p className="text-xs font-medium text-ink-faint">
                 AI Mock Interview
               </p>
-              <p className="mt-0.5 text-sm font-semibold text-ink">
-                Question {Math.min(questionNumber, totalQuestions)} /{" "}
-                {totalQuestions}
-              </p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-sm font-semibold text-ink">
+                  Question {Math.min(questionNumber, totalQuestions)} /{" "}
+                  {totalQuestions}
+                </p>
+                {timeLeft !== null && (
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${timeLeft < 60 ? "bg-warn-soft text-warn" : "bg-weak-soft text-weak-strong"}`}>
+                    {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")} remaining
+                  </span>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -253,12 +296,12 @@ export default function MockInterview() {
               >
                 <RotateCw size={15} />
               </button>
-              <Link
-                to="/"
+              <button
+                onClick={() => setShowExitConfirm(true)}
                 className="text-xs font-medium text-ink-faint hover:text-ink"
               >
                 Exit
-              </Link>
+              </button>
             </div>
           </div>
 
@@ -293,6 +336,35 @@ export default function MockInterview() {
               disabled={false}
             />
           </div>
+
+          {showExitConfirm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/20 px-4 backdrop-blur-sm">
+              <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-6 shadow-xl">
+                <h3 className="text-lg font-semibold text-ink">End Interview?</h3>
+                <p className="mt-2 text-sm text-ink-soft">
+                  Are you sure you want to end the interview early? We will evaluate your progress so far.
+                </p>
+                <div className="mt-5 flex gap-3">
+                  <Button
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={() => setShowExitConfirm(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    onClick={() => {
+                      setShowExitConfirm(false);
+                      handleTimeUp();
+                    }}
+                  >
+                    Yes, End
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

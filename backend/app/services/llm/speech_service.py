@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 _settings = get_settings()
 
 
-def transcribe_audio(audio_bytes: bytes, filename: str = "answer.webm") -> str:
+def transcribe_audio(audio_bytes: bytes, filename: str = "answer.webm", api_key: str | None = None) -> str:
     """Send recorded candidate audio to Groq Whisper and return the transcript."""
-    client = get_groq_client()
+    client = get_groq_client(api_key)
     try:
         result = client.audio.transcriptions.create(
             file=(filename, audio_bytes),
@@ -32,9 +32,9 @@ def transcribe_audio(audio_bytes: bytes, filename: str = "answer.webm") -> str:
     return text
 
 
-def synthesize_speech(text: str) -> bytes:
+def synthesize_speech(text: str, api_key: str | None = None) -> bytes:
     """Convert interviewer question text into spoken audio via Groq TTS."""
-    client = get_groq_client()
+    client = get_groq_client(api_key)
     try:
         response = client.audio.speech.create(
             model=_settings.groq_tts_model,

@@ -57,6 +57,7 @@ async def start(
     duration: int = Form(...),
     question_count: int = Form(...),
     resume: UploadFile | None = File(None),
+    groq_api_key: str | None = Form(None),
 ):
     """
     Start a mock interview.
@@ -113,6 +114,7 @@ async def start(
             mode=mode,
             duration_minutes=duration,
             question_count=question_count,
+            api_key=groq_api_key,
         )
 
     except GroqServiceError as exc:
@@ -207,6 +209,7 @@ async def voice_answer(
         text = transcribe_audio(
             audio_bytes,
             filename=audio.filename or "answer.webm",
+            api_key=session.api_key,
         )
 
     except GroqServiceError as exc:
@@ -269,7 +272,8 @@ async def speak(
     try:
 
         audio_bytes = synthesize_speech(
-            payload.text
+            payload.text,
+            api_key=session.api_key,
         )
 
     except GroqServiceError as exc:

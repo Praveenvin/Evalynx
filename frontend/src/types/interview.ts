@@ -1,6 +1,7 @@
 export type InterviewSource = "resume" | "role";
 export type InterviewMode = "standard" | "dynamic";
 export type AnswerMethod = "voice" | "text";
+export type ApiProvider = "custom" | "builtin";
 
 export type InterviewState =
   | "idle"
@@ -31,6 +32,8 @@ export interface InterviewConfig {
   durationMinutes: number;
   questionCount: number;
   allowTyping: boolean;
+  apiProvider: ApiProvider;
+  groqApiKey?: string;
 }
 
 export interface ChatMessage {
@@ -61,6 +64,8 @@ export interface StartInterviewPayload {
   mode: InterviewMode;
   duration: number;
   question_count: number;
+  api_provider: ApiProvider;
+  groq_api_key?: string;
 }
 
 export interface StartInterviewResponse {
