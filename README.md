@@ -2,10 +2,6 @@
 
 AI-powered candidate assessment platform featuring intelligent resume screening and personalized mock interviews with adaptive evaluation.
 
-## Live Demo
-
-https://evalynx-six.vercel.app
-
 ## Overview
 
 Evalynx is an AI-powered candidate assessment platform designed to streamline the initial stages of technical recruitment.
