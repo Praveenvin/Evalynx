@@ -3,6 +3,7 @@ import Navbar from "./components/Navbar";
 import Dashboard from "./pages/Dashboard";
 import ResumeScreening from "./pages/ResumeScreening";
 import MockInterview from "./pages/MockInterview";
+import CourseRecommendation from "./pages/CourseRecommendation";
 
 export default function App() {
   return (
@@ -12,6 +13,7 @@ export default function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/resume-screening" element={<ResumeScreening />} />
         <Route path="/mock-interview" element={<MockInterview />} />
+        <Route path="/course-recommendation" element={<CourseRecommendation />} />
       </Routes>
     </div>
   );

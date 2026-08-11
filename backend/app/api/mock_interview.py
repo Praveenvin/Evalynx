@@ -1,9 +1,11 @@
 import json
 import logging
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, Depends
 from fastapi.responses import Response
+from sqlalchemy.orm import Session
 
+from app.core.database import get_db
 from app.schemas import (
     AnswerRequest,
     AnswerResponse,
@@ -34,6 +36,7 @@ from app.services.mock_interview.resume_extractor import (
 
 from app.services.mock_interview.session_store import (
     get_session,
+    save_session,
 )
 
 
@@ -58,6 +61,7 @@ async def start(
     question_count: int = Form(...),
     resume: UploadFile | None = File(None),
     groq_api_key: str | None = Form(None),
+    db: Session = Depends(get_db),
 ):
     """
     Start a mock interview.
@@ -107,6 +111,7 @@ async def start(
     try:
 
         session, first_question = start_interview(
+            db,
             source=source,
             role=role,
             skills=parsed_skills,
@@ -125,7 +130,7 @@ async def start(
         ) from exc
 
     return StartInterviewResponse(
-        session_id=session.session_id,
+        session_id=session.id,
         question_number=1,
         total_questions=session.total_questions,
         question=first_question,
@@ -140,6 +145,7 @@ async def start(
 async def answer(
     session_id: str,
     payload: AnswerRequest,
+    db: Session = Depends(get_db),
 ):
 
     if not payload.answer.strip():
@@ -151,6 +157,7 @@ async def answer(
     try:
 
         result = submit_answer(
+            db,
             session_id,
             payload.answer,
         )
@@ -186,9 +193,10 @@ async def answer(
 async def voice_answer(
     session_id: str,
     audio: UploadFile = File(...),
+    db: Session = Depends(get_db),
 ):
 
-    session = get_session(session_id)
+    session = get_session(db, session_id)
 
     if session is None:
         raise HTTPException(
@@ -230,9 +238,10 @@ async def voice_answer(
 )
 async def replay_question(
     session_id: str,
+    db: Session = Depends(get_db),
 ):
 
-    session = get_session(session_id)
+    session = get_session(db, session_id)
 
     if session is None:
         raise HTTPException(
@@ -259,9 +268,10 @@ async def replay_question(
 async def speak(
     session_id: str,
     payload: SpeakRequest,
+    db: Session = Depends(get_db),
 ):
 
-    session = get_session(session_id)
+    session = get_session(db, session_id)
 
     if session is None:
         raise HTTPException(
@@ -294,9 +304,10 @@ async def speak(
 )
 async def complete(
     session_id: str,
+    db: Session = Depends(get_db),
 ):
 
-    session = get_session(session_id)
+    session = get_session(db, session_id)
 
     if session is None:
         raise HTTPException(
@@ -305,6 +316,7 @@ async def complete(
         )
 
     session.is_complete = True
+    save_session(db, session)
 
     try:
 

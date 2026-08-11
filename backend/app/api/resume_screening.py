@@ -9,7 +9,11 @@ from fastapi import (
     Form,
     HTTPException,
     UploadFile,
+    Depends,
 )
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
 
 from app.services.resume_screening.batch_screening import (
     BatchScreeningService,
@@ -36,6 +40,7 @@ async def screen_resumes(
         str | None,
         Form(),
     ] = None,
+    db: Session = Depends(get_db),
 ):
     if not resumes:
         raise HTTPException(
@@ -65,6 +70,7 @@ async def screen_resumes(
                 )
 
         results = service.screen_directory(
+            db=db,
             directory=str(temp_dir),
             job_description=job_description,
             top_k=5,
@@ -73,13 +79,7 @@ async def screen_resumes(
 
         return {
             "total_candidates": len(results),
-            "results": [
-                {
-                    "rank": index + 1,
-                    **result,
-                }
-                for index, result in enumerate(results)
-            ],
+            "results": results,
         }
 
     finally:

@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     # Frontend
     frontend_origin: str = "http://localhost:5173"
 
+    # Database
+    database_url: str = "postgresql://postgres:pravinwin4@127.0.0.1:5433/evalynx"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",

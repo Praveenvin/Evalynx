@@ -1,4 +1,4 @@
-import { FileSearch, MessageSquareText, Globe } from "lucide-react";
+import { FileSearch, MessageSquareText, Globe, GraduationCap } from "lucide-react";
 import AgentCard from "../components/AgentCard";
 
 function GithubMark() {
@@ -46,6 +46,13 @@ export default function Dashboard() {
           title="Mock Interview"
           description="Practice realistic interviews with an AI interviewer using standard or dynamic questioning with voice or text answers."
           badges={["LLM", "Voice", "Dynamic Questions", "Evaluation"]}
+        />
+        <AgentCard
+          to="/course-recommendation"
+          icon={GraduationCap}
+          title="Course Recommendation"
+          description="Get a personalized, ordered learning path based on your background, goals, and current skills."
+          badges={["LLM", "Deterministic Path", "Skill Gap Analysis"]}
         />
       </div>
 

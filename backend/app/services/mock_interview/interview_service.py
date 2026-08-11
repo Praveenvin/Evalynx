@@ -5,6 +5,7 @@ Routers should call into this module rather than touching Groq or the
 session store directly.
 """
 import logging
+from sqlalchemy.orm import Session
 
 from app.services.llm.groq_client import (
     GroqServiceError,
@@ -29,6 +30,7 @@ from app.services.mock_interview.session_store import (
     InterviewTurn,
     create_session,
     get_session,
+    save_session,
 )
 
 logger = logging.getLogger(__name__)
@@ -41,6 +43,7 @@ class InterviewNotFoundError(Exception):
 class InterviewCompleteError(Exception):
     pass
 def start_interview(
+    db: Session,
     *,
     source: str,
     role: str,
@@ -52,6 +55,7 @@ def start_interview(
     api_key: str | None = None,
 ) -> tuple[InterviewSession, str]:
     session = create_session(
+        db,
         source=source,
         role=role,
         skills=skills,
@@ -74,12 +78,13 @@ def start_interview(
         )
 
     session.current_question_number = 1
-    session.turns.append(InterviewTurn(question=first_question))
+    session.turns.append(InterviewTurn(question=first_question, turn_index=1))
+    save_session(db, session)
     return session, first_question
 
 
-def submit_answer(session_id: str, answer: str) -> dict:
-    session = get_session(session_id)
+def submit_answer(db: Session, session_id: str, answer: str) -> dict:
+    session = get_session(db, session_id)
     if session is None:
         raise InterviewNotFoundError(session_id)
     if session.is_complete:
@@ -99,6 +104,7 @@ def submit_answer(session_id: str, answer: str) -> dict:
 
     if session.current_question_number >= session.total_questions:
         session.is_complete = True
+        save_session(db, session)
         final = build_final_evaluation(session)
         return {
             "evaluation": evaluation,
@@ -110,7 +116,8 @@ def submit_answer(session_id: str, answer: str) -> dict:
 
     next_question = _next_question(session)
     session.current_question_number += 1
-    session.turns.append(InterviewTurn(question=next_question))
+    session.turns.append(InterviewTurn(question=next_question, turn_index=session.current_question_number))
+    save_session(db, session)
 
     return {
         "evaluation": evaluation,

@@ -10,6 +10,9 @@ from app.api.mock_interview import (
     router as mock_interview_router,
 )
 
+from app.api.course_recommendation import (
+    router as course_recommendation_router,
+)
 
 app = FastAPI(
     title="Evalynx API",
@@ -45,6 +48,10 @@ app.include_router(
 
 app.include_router(
     mock_interview_router
+)
+
+app.include_router(
+    course_recommendation_router
 )
 
 
