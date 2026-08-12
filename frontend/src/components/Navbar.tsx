@@ -1,8 +1,20 @@
 import { Link, useLocation } from "react-router-dom";
-
 const links = [
-  { to: "/resume-screening", label: "Resume Screening" },
-  { to: "/mock-interview", label: "Mock Interview" },
+  {
+    to: "/resume-screening",
+    label: "Resume Screening",
+    mobileLabel: "Resume",
+  },
+  {
+    to: "/mock-interview",
+    label: "Mock Interview",
+    mobileLabel: "Interview",
+  },
+  {
+    to: "/course-recommendation",
+    label: "Course Recommendation",
+    mobileLabel: "Courses",
+  },
 ];
 
 export default function Navbar() {
@@ -10,28 +22,37 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-surface/80 backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
+      <div className="mx-auto flex min-h-14 max-w-6xl items-center justify-between gap-4 px-4 py-2 sm:px-6">
+        {/* Logo */}
         <Link
           to="/"
-          className="font-display text-lg font-semibold tracking-tight text-ink"
+          className="flex shrink-0 items-center"
+          aria-label="Evalynx Home"
         >
-          Evalynx
+          <img
+            src="/evalynx.png"
+            alt="Evalynx"
+            className="h-9 w-auto object-contain"
+          />
         </Link>
 
-        <nav className="flex items-center gap-1">
+        {/* Navigation */}
+        <nav className="flex items-center gap-1 overflow-x-auto scrollbar-none">
           {links.map((link) => {
             const active = location.pathname === link.to;
+
             return (
               <Link
                 key={link.to}
                 to={link.to}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors duration-150 ${
+                className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors duration-150 sm:px-3 sm:text-sm ${
                   active
                     ? "bg-accent-soft text-accent-hover"
                     : "text-ink-soft hover:bg-canvas hover:text-ink"
                 }`}
               >
-                {link.label}
+                <span className="hidden sm:inline">{link.label}</span>
+                <span className="sm:hidden">{link.mobileLabel}</span>
               </Link>
             );
           })}

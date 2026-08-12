@@ -108,7 +108,43 @@ class CourseRecommendationResponse(BaseModel):
     student: StudentProfile
     career_goal: str
     current_skills: list[str]
-    skill_gaps: list[str]
+    skill_gaps: list[str] = Field(default_factory=list)
     learning_path: list[LearningPathStep]
     summary: str
     goal_supported: bool = True
+
+from datetime import datetime
+from typing import Generic, TypeVar, Any
+
+T = TypeVar("T")
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    items: list[T]
+    page: int
+    page_size: int
+    total: int
+    total_pages: int
+
+class ResumeScreeningHistoryItem(BaseModel):
+    id: str
+    created_at: datetime
+    job_description: str
+    candidate_count: int
+    top_score: float | None
+    status: str
+
+class MockInterviewHistoryItem(BaseModel):
+    id: str
+    created_at: datetime
+    role: str
+    mode: str
+    total_questions: int
+    overall_score: int | None
+    is_complete: bool
+
+class CourseRecommendationHistoryItem(BaseModel):
+    id: str
+    created_at: datetime
+    student_name: str
+    career_goal: str
+    course_count: int

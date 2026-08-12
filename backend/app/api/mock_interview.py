@@ -291,10 +291,75 @@ async def complete(
         )
 
     session.is_complete = True
-    save_session(db, session)
 
     final = build_final_evaluation(
         session
     )
+    
+    session.final_evaluation = final.model_dump()
+    save_session(db, session)
 
     return final
+
+from app.schemas import PaginatedResponse, MockInterviewHistoryItem, FinalEvaluation
+from app.models.interview import InterviewSessionModel
+
+@router.get("/history", response_model=PaginatedResponse[MockInterviewHistoryItem])
+async def get_history(page: int = 1, page_size: int = 10, db: Session = Depends(get_db)):
+    offset = (page - 1) * page_size
+    total = db.query(InterviewSessionModel).count()
+    items = db.query(InterviewSessionModel).order_by(InterviewSessionModel.created_at.desc()).offset(offset).limit(page_size).all()
+    
+    response_items = []
+    for item in items:
+        overall = item.final_evaluation.get("overall_score") if isinstance(item.final_evaluation, dict) else None
+        
+        if overall is None and item.turns:
+            valid_turns = [t for t in item.turns if t.evaluation and isinstance(t.evaluation, dict) and "score" in t.evaluation]
+            if valid_turns:
+                overall = sum(t.evaluation.get("score", 0) for t in valid_turns) // len(valid_turns)
+                
+        response_items.append({
+            "id": str(item.id),
+            "created_at": item.created_at,
+            "role": item.role or "Unknown",
+            "mode": item.mode or "standard",
+            "total_questions": int(item.total_questions) if item.total_questions is not None else 0,
+            "overall_score": overall,
+            "is_complete": bool(item.is_complete)
+        })
+        
+    return {
+        "items": response_items,
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": (total + page_size - 1) // page_size
+    }
+
+@router.get("/history/{id}")
+async def get_history_detail(id: str, db: Session = Depends(get_db)):
+    history_item = db.query(InterviewSessionModel).filter(InterviewSessionModel.id == id).first()
+    if not history_item:
+        raise HTTPException(404, "History not found")
+        
+    return {
+        "id": history_item.id,
+        "created_at": history_item.created_at,
+        "role": history_item.role,
+        "skills": history_item.skills,
+        "mode": history_item.mode,
+        "duration_minutes": history_item.duration_minutes,
+        "total_questions": history_item.total_questions,
+        "is_complete": history_item.is_complete,
+        "final_evaluation": history_item.final_evaluation,
+        "turns": [
+            {
+                "turn_index": t.turn_index,
+                "question": t.question,
+                "answer": t.answer,
+                "evaluation": t.evaluation
+            }
+            for t in history_item.turns
+        ]
+    }

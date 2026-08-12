@@ -1,8 +1,9 @@
 import { useState, type KeyboardEvent } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Clock, GraduationCap, Loader2, X } from "lucide-react";
+import { ArrowLeft, Clock, GraduationCap, Loader2, X, History } from "lucide-react";
 import Button from "../components/Button";
 import Badge from "../components/Badge";
+import CourseRecommendationHistory from "../components/CourseRecommendationHistory";
 import { recommendCourses } from "../services/courseRecommendationApi";
 import { ApiError } from "../services/api";
 import type { CourseRecommendationResponse } from "../types/courseRecommendation";
@@ -80,6 +81,8 @@ export default function CourseRecommendation() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | ApiErrorDetail | null>(null);
   const [result, setResult] = useState<CourseRecommendationResponse | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [fromHistory, setFromHistory] = useState(false);
 
   const [apiProvider, setApiProvider] = useState<ApiProvider>("user");
   const [groqApiKey, setGroqApiKey] = useState("");
@@ -117,17 +120,32 @@ export default function CourseRecommendation() {
   const handleReset = () => {
     setResult(null);
     setError(null);
+    setFromHistory(false);
+  };
+  
+  const handleHistoryDetail = (detail: any) => {
+    setResult(detail);
+    setFromHistory(true);
+    setShowHistory(false);
   };
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
-      <Link
-        to="/"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft transition-colors hover:text-ink"
-      >
-        <ArrowLeft size={15} />
-        Back to Dashboard
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft transition-colors hover:text-ink"
+        >
+          <ArrowLeft size={15} />
+          Back to Dashboard
+        </Link>
+        
+        {!showHistory && !fromHistory && (
+          <Button variant="secondary" size="sm" onClick={() => setShowHistory(true)}>
+            <History size={16} /> <span className="hidden sm:inline">History</span>
+          </Button>
+        )}
+      </div>
 
       <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
         Course Recommendation
@@ -137,7 +155,12 @@ export default function CourseRecommendation() {
         goals, and current skills.
       </p>
 
-      {!result ? (
+      {showHistory ? (
+        <CourseRecommendationHistory 
+          onClose={() => setShowHistory(false)} 
+          onSelectDetail={handleHistoryDetail} 
+        />
+      ) : !result ? (
         <div className="mt-8 rounded-2xl border border-border bg-surface p-5 sm:p-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
@@ -333,7 +356,7 @@ export default function CourseRecommendation() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="font-display text-xl font-semibold text-ink">
-                Learning Path for {result.career_goal}
+                {fromHistory ? "Historical Learning Path" : "Learning Path"} for {result.career_goal}
               </h2>
               <p className="mt-1 text-sm text-ink-faint">
                 {result.learning_path.length} step
@@ -342,9 +365,16 @@ export default function CourseRecommendation() {
                 {result.skill_gaps.length === 1 ? "" : "s"} identified
               </p>
             </div>
-            <Button variant="secondary" size="sm" onClick={handleReset}>
-              New Recommendation
-            </Button>
+            <div className="flex items-center gap-3">
+              {fromHistory && (
+                <Button variant="secondary" size="sm" onClick={() => { setResult(null); setShowHistory(true); setFromHistory(false); }}>
+                  <ArrowLeft size={16} className="mr-1" /> Back to History
+                </Button>
+              )}
+              <Button variant={fromHistory ? "primary" : "secondary"} size="sm" onClick={handleReset}>
+                New Recommendation
+              </Button>
+            </div>
           </div>
 
           <div className="mt-5 rounded-2xl border border-border bg-surface p-5 sm:p-6">

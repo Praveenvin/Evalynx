@@ -36,23 +36,30 @@ function LinkedinMark() {
 
 export default function Dashboard() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
-      <div className="max-w-2xl">
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-          Evalynx
-        </h1>
+    <div className="relative mx-auto max-w-6xl overflow-hidden px-4 py-10 sm:px-6 sm:py-14">
+      {/* Evalynx background watermark */}
+      <img
+        src="/logo6.png"
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none absolute right-[-40px] top-24 hidden w-80 opacity-[0.035] lg:block"
+      />
+      <div className="relative z-10 max-w-2xl">
+  <h1 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+    Evalynx
+  </h1>
 
-        <p className="mt-3 text-base leading-relaxed text-ink-soft">
-          AI-powered tools for smarter hiring, interview preparation, and
-          personalized career development.
-        </p>
+  <p className="mt-3 text-base leading-relaxed text-ink-soft">
+    AI-powered tools for smarter hiring, interview preparation, and
+    personalized career development.
+  </p>
 
-        <p className="mt-1.5 text-sm text-ink-faint">
-          Three focused AI agents. One simple workspace.
-        </p>
-      </div>
+  <p className="mt-1.5 text-sm text-ink-faint">
+    Three focused AI agents. One simple workspace.
+  </p>
+</div>
 
-      <div className="mt-8 grid grid-cols-1 gap-5 sm:mt-10 sm:grid-cols-2">
+      <div className="relative z-10 mt-8 grid grid-cols-1 gap-5 sm:mt-10 sm:grid-cols-2">
         <AgentCard
           to="/resume-screening"
           icon={FileSearch}
@@ -79,36 +86,67 @@ export default function Dashboard() {
       </div>
 
       {/* About */}
-      <div className="mt-14 max-full border-t border-border pt-8 sm:mt-16">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
-          About Evalynx
-        </h2>
+<div className="relative z-10 mt-14 w-full border-t border-border pt-8 sm:mt-16">
+  <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
+    About Evalynx
+  </h2>
 
-        <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-          Evalynx brings together three practical AI agents across the
-          hiring, interview, and career development journey. Resume Screening
-          helps identify relevant candidates faster. Mock Interview helps
-          candidates practice and evaluate their interview performance.
-          Course Recommendation provides personalized learning paths based on
-          individual career goals and skill gaps.
-        </p>
-      </div>
+  <p className="mt-3 max-w-4xl text-sm leading-relaxed text-ink-soft">
+    Evalynx brings together three practical AI agents across the hiring,
+    interview, and career development journey. Resume Screening helps identify
+    relevant candidates faster. Mock Interview helps candidates practice and
+    evaluate their interview performance. Course Recommendation provides
+    personalized learning paths based on individual career goals and skill
+    gaps.
+  </p>
+</div>
 
       {/* Developer footer */}
-      <footer className="mt-10 flex flex-col gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-medium text-ink">Built by Praveen V</p>
+      <footer className="relative z-10 mt-10 border-t border-border pt-6">
+  <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
 
-          <p className="mt-0.5 text-xs text-ink-faint">
-            Computer Science &amp; Engineering · AI / Full-Stack Developer
-          </p>
+    {/* Brand */}
+    <div className="flex items-center gap-3">
+      <img
+        src="/logo6.png"
+        alt="Evalynx"
+        className="h-9 w-9 object-contain"
+      />
 
-          <p className="mt-0.5 text-xs text-ink-faint">
-            React · TypeScript · Python · FastAPI · AI/RAG
-          </p>
-        </div>
+      <div>
+        <p className="text-sm font-medium text-ink">
+          Evalynx
+        </p>
 
-        <div className="flex items-center gap-2">
+        <p className="mt-0.5 text-xs text-ink-faint">
+          AI-powered career & hiring workspace
+        </p>
+      </div>
+    </div>
+
+    {/* Developer */}
+    <div className="text-left sm:text-right">
+      <p className="text-sm font-medium text-ink">
+        Built by Praveen V
+      </p>
+
+      <p className="mt-0.5 text-xs text-ink-faint">
+        Computer Science &amp; Engineering · AI / Full-Stack Developer
+      </p>
+
+      <p className="mt-0.5 text-xs text-ink-faint">
+        React · TypeScript · Python · FastAPI · PostgreSQL · AI
+      </p>
+    </div>
+
+  </div>
+
+  {/* Links + copyright */}
+  <div className="mt-5 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+
+    <p className="text-xs text-ink-faint">
+      © 2026 Evalynx · All rights reserved
+    </p><div className="flex items-center gap-2">
           <a
             href="https://praveen-v.vercel.app/"
             target="_blank"
@@ -136,6 +174,7 @@ export default function Dashboard() {
             <LinkedinMark /> LinkedIn
           </a>
         </div>
+  </div>
       </footer>
     </div>
   );

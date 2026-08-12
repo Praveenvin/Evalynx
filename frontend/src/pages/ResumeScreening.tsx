@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, History } from "lucide-react";
 import FileUpload from "../components/FileUpload";
 import FileList from "../components/FileList";
 import Button from "../components/Button";
 import CandidateTable from "../components/CandidateTable";
 import CandidateDetails from "../components/CandidateDetails";
+import ResumeScreeningHistory from "../components/ResumeScreeningHistory";
 import { screenResumes } from "../services/resumeScreeningApi";
 import type { CandidateResult, ScreeningResponse } from "../types/resumeScreening";
 import type { ApiProvider } from "../types/interview";
@@ -18,10 +19,11 @@ export default function ResumeScreening() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | ApiErrorDetail | null>(null);
   const [results, setResults] = useState<ScreeningResponse | null>(null);
-  const [selectedCandidate, setSelectedCandidate] =
-    useState<CandidateResult | null>(null);
+  const [selectedCandidate, setSelectedCandidate] = useState<CandidateResult | null>(null);
   const [apiProvider, setApiProvider] = useState<ApiProvider>("user");
   const [groqApiKey, setGroqApiKey] = useState("");
+  const [showHistory, setShowHistory] = useState(false);
+  const [fromHistory, setFromHistory] = useState(false);
 
   const hasNonAsciiKey = apiProvider === "user" && /[^\x00-\x7F]/.test(groqApiKey);
   const canScreen = jobDescription.trim().length > 0 && resumes.length > 0 && !hasNonAsciiKey;
@@ -61,17 +63,31 @@ export default function ResumeScreening() {
   const handleReset = () => {
     setResults(null);
     setError(null);
+    setFromHistory(false);
+  };
+
+  const handleHistoryDetail = (detail: ScreeningResponse) => {
+    setResults(detail);
+    setFromHistory(true);
+    setShowHistory(false);
   };
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
-      <Link
-        to="/"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft transition-colors hover:text-ink"
-      >
-        <ArrowLeft size={15} />
-        Back to Dashboard
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft transition-colors hover:text-ink"
+        >
+          <ArrowLeft size={15} />
+          Back to Dashboard
+        </Link>
+        {!showHistory && !fromHistory && (
+          <Button variant="secondary" size="sm" onClick={() => setShowHistory(true)}>
+            <History size={16} /> <span className="hidden sm:inline">History</span>
+          </Button>
+        )}
+      </div>
 
       <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
         Resume Screening
@@ -81,7 +97,9 @@ export default function ResumeScreening() {
         semantic screening.
       </p>
 
-      {!results ? (
+      {showHistory ? (
+        <ResumeScreeningHistory onClose={() => setShowHistory(false)} onSelectDetail={handleHistoryDetail} />
+      ) : !results ? (
         <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-2">
           <section className="rounded-2xl border border-border bg-surface p-5 sm:p-6">
             <h2 className="text-sm font-semibold text-ink">Job Description</h2>
@@ -217,7 +235,7 @@ export default function ResumeScreening() {
           <div className="lg:col-span-2">
             {error && <ErrorPopup error={error} />}
             <Button
-              onClick={handleScreen}
+               onClick={handleScreen}
               disabled={!canScreen || isLoading}
               className="w-full sm:w-auto"
             >
@@ -237,15 +255,22 @@ export default function ResumeScreening() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="font-display text-xl font-semibold text-ink">
-                Screening Results
+                {fromHistory ? "Historical Screening Results" : "Screening Results"}
               </h2>
               <p className="mt-1 text-sm text-ink-faint">
                 {results.total_candidates} candidates screened
               </p>
             </div>
-            <Button variant="secondary" size="sm" onClick={handleReset}>
-              New Screening
-            </Button>
+            <div className="flex items-center gap-3">
+              {fromHistory && (
+                <Button variant="secondary" size="sm" onClick={() => { setResults(null); setShowHistory(true); setFromHistory(false); }}>
+                  <ArrowLeft size={16} className="mr-1" /> Back to History
+                </Button>
+              )}
+              <Button variant={fromHistory ? "primary" : "secondary"} size="sm" onClick={handleReset}>
+                New Screening
+              </Button>
+            </div>
           </div>
 
           <div className="mt-6">

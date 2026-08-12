@@ -22,6 +22,7 @@ class InterviewSessionModel(Base):
     current_question_number = Column(Integer, default=0)
     api_key = Column(String, nullable=True)
     is_complete = Column(Boolean, default=False)
+    final_evaluation = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     turns = relationship(

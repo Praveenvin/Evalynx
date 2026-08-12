@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, RotateCw, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, RotateCw, Volume2, VolumeX, History, Loader2 } from "lucide-react";
 import InterviewSetup from "../components/InterviewSetup";
 import ChatMessage from "../components/ChatMessage";
 import AnswerPanel from "../components/AnswerPanel";
 import ScoreBar from "../components/ScoreBar";
 import Button from "../components/Button";
+import MockInterviewHistory from "../components/MockInterviewHistory";
+import MockInterviewHistoryDetail, { type MockInterviewHistoryDetailData } from "../components/MockInterviewHistoryDetail";
 import {
   replayQuestion,
   startInterview,
@@ -23,10 +25,11 @@ import type {
 } from "../types/interview";
 import ErrorPopup, { type ApiErrorDetail } from "../components/ErrorPopup";
 
-type Stage = "setup" | "chat" | "result";
+type Stage = "setup" | "chat" | "result" | "history" | "history_detail";
 
 export default function MockInterview() {
   const [stage, setStage] = useState<Stage>("setup");
+  const [historyDetail, setHistoryDetail] = useState<MockInterviewHistoryDetailData | null>(null);
   const [setupError, setSetupError] = useState<string | ApiErrorDetail | null>(null);
   const [isStarting, setIsStarting] = useState(false);
 
@@ -229,7 +232,7 @@ export default function MockInterview() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
       {stage !== "chat" && (
-        <>
+        <div className="flex items-center justify-between">
           <Link
             to="/"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft transition-colors hover:text-ink"
@@ -237,7 +240,23 @@ export default function MockInterview() {
             <ArrowLeft size={15} />
             Back to Dashboard
           </Link>
+          {stage === "setup" && (
+            <Button variant="secondary" size="sm" onClick={() => setStage("history")}>
+              <History size={16} /> <span className="hidden sm:inline">History</span>
+            </Button>
+          )}
+        </div>
+      )}
 
+      {stage === "history_detail" && historyDetail && (
+        <MockInterviewHistoryDetail 
+          detail={historyDetail} 
+          onBack={() => setStage("history")} 
+        />
+      )}
+
+      {stage !== "chat" && stage !== "history" && stage !== "history_detail" && (
+        <>
           <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
             Mock Interview
           </h1>
@@ -246,6 +265,16 @@ export default function MockInterview() {
             performance.
           </p>
         </>
+      )}
+
+      {stage === "history" && (
+        <MockInterviewHistory 
+          onClose={() => setStage("setup")} 
+          onSelectDetail={(detail) => {
+            setHistoryDetail(detail);
+            setStage("history_detail");
+          }}
+        />
       )}
 
       {stage === "setup" && (

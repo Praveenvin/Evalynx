@@ -66,3 +66,68 @@ async def recommend(student: StudentProfile, db: Session = Depends(get_db)):
     student.groq_api_key = None
 
     return CourseRecommendationResponse(student=student, **result)
+
+from app.schemas import PaginatedResponse, CourseRecommendationHistoryItem
+
+@router.get("/history", response_model=PaginatedResponse[CourseRecommendationHistoryItem])
+async def get_history(page: int = 1, page_size: int = 10, db: Session = Depends(get_db)):
+    offset = (page - 1) * page_size
+    total = db.query(CourseRecommendationHistoryModel).count()
+    items = db.query(CourseRecommendationHistoryModel).order_by(CourseRecommendationHistoryModel.created_at.desc()).offset(offset).limit(page_size).all()
+    
+    return {
+        "items": [
+            {
+                "id": item.id,
+                "created_at": item.created_at,
+                "student_name": item.student_name,
+                "career_goal": item.career_goal,
+                "course_count": len(item.paths)
+            }
+            for item in items
+        ],
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": (total + page_size - 1) // page_size
+    }
+
+@router.get("/history/{id}", response_model=CourseRecommendationResponse)
+async def get_history_detail(id: str, db: Session = Depends(get_db)):
+    history_item = db.query(CourseRecommendationHistoryModel).filter(CourseRecommendationHistoryModel.id == id).first()
+    if not history_item:
+        raise HTTPException(404, "History not found")
+        
+    student_profile = StudentProfile(
+        name=history_item.student_name,
+        education=history_item.education or "",
+        background=history_item.background or "",
+        career_goal=history_item.career_goal,
+        current_skills=history_item.current_skills,
+        interests=history_item.interests,
+        api_provider="evalynx" # Default metadata
+    )
+    
+    learning_path = [
+        {
+            "step": path.step,
+            "course": path.course,
+            "reason": path.reason,
+            "difficulty": path.difficulty,
+            "prerequisites": path.prerequisites,
+            "duration": path.duration,
+            "skills_gained": path.skills_gained
+        }
+        for path in history_item.paths
+    ]
+    
+    return CourseRecommendationResponse(
+        student=student_profile,
+        career_goal=history_item.career_goal,
+        current_skills=history_item.current_skills,
+        skill_gaps=[],
+        learning_path=learning_path,
+        summary=history_item.summary,
+        goal_supported=True
+    )
+
