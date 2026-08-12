@@ -2,6 +2,7 @@ from pathlib import Path
 
 from app.services.resume_screening.resume_processor import (
     process_resume,
+    SUPPORTED_EXTENSIONS,
 )
 from app.services.resume_screening.retriever import (
     CandidateRetriever,
@@ -20,12 +21,6 @@ from app.models.resume_screening import (
     ResumeCandidateModel,
     ResumeEvidenceModel,
 )
-
-SUPPORTED_EXTENSIONS = {
-    ".pdf",
-    ".docx",
-    ".txt",
-}
 
 
 class BatchScreeningService:
@@ -132,12 +127,12 @@ class BatchScreeningService:
             except GroqServiceError:
                 db.rollback()
                 raise
+            except ValueError as error:
+                db.rollback()
+                raise ValueError(f"Failed to process {file_path.name}: {str(error)}")
             except Exception as error:
                 db.rollback()
-                print(
-                    f"Failed: {file_path.name}"
-                )
-                print(f"Error: {error}")
+                raise ValueError(f"Unexpected error while processing {file_path.name}: {str(error)}")
 
         results.sort(
             key=lambda item: item["overall_score"],

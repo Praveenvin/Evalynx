@@ -95,10 +95,11 @@ async def start(
 
         try:
             resume_bytes = await resume.read()
-
-            resume_text = extract_resume_text(
-                resume_bytes
-            )
+            filename = resume.filename or "resume.pdf"
+            
+            # Use unified shared extraction
+            from app.services.rag.document_loader import extract_from_bytes
+            resume_text = extract_from_bytes(resume_bytes, filename)
 
         except ValueError as exc:
             raise HTTPException(

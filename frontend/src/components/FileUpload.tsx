@@ -6,13 +6,15 @@ interface FileUploadProps {
   multiple?: boolean;
   accept?: string;
   label?: string;
+  helperText?: string;
 }
 
 export default function FileUpload({
   onFilesSelected,
   multiple = true,
-  accept = ".pdf",
+  accept = ".pdf,.docx",
   label = "resumes",
+  helperText,
 }: FileUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -27,6 +29,8 @@ export default function FileUpload({
     setIsDragging(false);
     handleFiles(event.dataTransfer.files);
   };
+
+  const displayHelperText = helperText || (multiple ? "PDF or DOCX (multiple)" : "PDF or DOCX");
 
   return (
     <div
@@ -58,7 +62,7 @@ export default function FileUpload({
         or <span className="font-medium text-accent">Browse files</span>
       </p>
       <p className="mt-3 text-xs text-ink-faint">
-        {multiple ? "Multiple PDF files supported" : "PDF file"}
+        {displayHelperText}
       </p>
       <input
         ref={inputRef}

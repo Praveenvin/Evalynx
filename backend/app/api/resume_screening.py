@@ -77,14 +77,20 @@ async def screen_resumes(
                     buffer,
                 )
 
-        results = service.screen_directory(
-            db=db,
-            directory=str(temp_dir),
-            job_description=job_description,
-            top_k=5,
-            api_provider=api_provider,
-            api_key=groq_api_key,
-        )
+        try:
+            results = service.screen_directory(
+                db=db,
+                directory=str(temp_dir),
+                job_description=job_description,
+                top_k=5,
+                api_provider=api_provider,
+                api_key=groq_api_key,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=str(exc)
+            )
 
         return {
             "total_candidates": len(results),

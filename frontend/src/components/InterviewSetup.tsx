@@ -77,7 +77,7 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
           <div className="mt-4">
             <FileUpload
               multiple={false}
-              label="resume"
+              label="Your Resume"
               onFilesSelected={(files) => setResumeFile(files[0] ?? null)}
             />
             {resumeFile && (
