@@ -22,6 +22,8 @@ class InterviewSessionModel(Base):
     current_question_number = Column(Integer, default=0)
     api_key = Column(String, nullable=True)
     is_complete = Column(Boolean, default=False)
+    security_mode = Column(String, default="standard", nullable=False)
+    proctoring_metadata = Column(JSON, nullable=True)
     final_evaluation = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     

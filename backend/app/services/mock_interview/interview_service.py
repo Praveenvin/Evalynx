@@ -60,6 +60,7 @@ def start_interview(
     question_count: int,
     api_provider: str = "evalynx",
     api_key: str | None = None,
+    security_mode: str = "standard",
 ) -> tuple[InterviewSession, str]:
     session = create_session(
         db,
@@ -70,6 +71,7 @@ def start_interview(
         mode=mode,
         duration_minutes=duration_minutes,
         total_questions=question_count,
+        security_mode=security_mode,
     )
 
     _session_auth[session.id] = {
@@ -147,6 +149,14 @@ def submit_answer(db: Session, session_id: str, answer: str) -> dict:
 def build_final_evaluation(session: InterviewSession) -> dict:
     evaluations = session.evaluations()
     scores = calculate_final_scores(evaluations)
+
+    if not evaluations:
+        return {
+            **scores,
+            "strengths": ["None identified (interview incomplete)"],
+            "areas_to_improve": ["Complete the interview to receive actionable feedback"],
+            "summary": "The interview was ended before any questions were answered.",
+        }
 
     auth = _session_auth.get(session.id, {"api_provider": "evalynx", "api_key": None})
     api_provider = auth["api_provider"]

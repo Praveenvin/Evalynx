@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2, List } from "lucide-react";
+import { ArrowLeft, CheckCircle2, List, ShieldCheck, ShieldAlert } from "lucide-react";
 import Button from "./Button";
 import type { FinalEvaluation } from "../types/interview";
 
@@ -11,6 +11,8 @@ export interface MockInterviewHistoryDetailData {
   duration_minutes: number;
   total_questions: number;
   is_complete: boolean;
+  security_mode?: string;
+  proctoring_metadata?: { type: string; timestamp: number; id: string; }[];
   final_evaluation: FinalEvaluation | null;
   turns: {
     turn_index: number;
@@ -75,6 +77,14 @@ export default function MockInterviewHistoryDetail({ detail, onBack }: Props) {
             <div className="text-ink-faint text-xs font-medium uppercase tracking-wider mb-1">Questions</div>
             <div>{detail.total_questions}</div>
           </div>
+          {detail.security_mode === "proctored" && (
+            <div>
+              <div className="text-ink-faint text-xs font-medium uppercase tracking-wider mb-1">Security</div>
+              <div className="flex items-center gap-1 text-accent font-medium">
+                <ShieldCheck size={14} /> Proctored
+              </div>
+            </div>
+          )}
         </div>
 
         {detail.skills && detail.skills.length > 0 && (
@@ -157,6 +167,50 @@ export default function MockInterviewHistoryDetail({ detail, onBack }: Props) {
         )}
       </div>
 
+      {detail.security_mode === "proctored" && detail.proctoring_metadata && (
+        <div className="rounded-2xl border border-border bg-surface p-6 mb-6">
+          <h3 className="font-display text-xl font-semibold text-ink mb-6 flex items-center gap-2">
+            <ShieldAlert size={20} className={detail.proctoring_metadata.length > 0 ? "text-warn-strong" : "text-success"} /> 
+            PROCTORING LOG
+          </h3>
+          {detail.proctoring_metadata.length === 0 ? (
+            <div className="text-sm text-ink-soft bg-canvas border border-border rounded-xl p-4 flex items-center justify-center">
+              No violations recorded during this interview.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="text-sm font-medium text-warn-strong mb-2">
+                Total Violations: {detail.proctoring_metadata.length}
+              </div>
+              <div className="overflow-hidden rounded-xl border border-border bg-canvas">
+                <table className="w-full text-left text-sm text-ink-soft">
+                  <thead className="border-b border-border bg-surface/50 text-xs uppercase tracking-wider text-ink-faint">
+                    <tr>
+                      <th className="px-4 py-3 font-medium">Time</th>
+                      <th className="px-4 py-3 font-medium">Violation Type</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {detail.proctoring_metadata.map((v, i) => (
+                      <tr key={v.id || i}>
+                        <td className="px-4 py-3 font-medium text-ink">
+                          {new Date(v.timestamp).toLocaleTimeString()}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center rounded-md bg-warn/10 px-2 py-1 text-xs font-medium text-warn-strong">
+                            {v.type.replace(/_/g, " ")}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <h3 className="font-display text-xl font-semibold text-ink mb-6">Questions & Answers</h3>
       
       <div className="space-y-6">
@@ -164,7 +218,9 @@ export default function MockInterviewHistoryDetail({ detail, onBack }: Props) {
           <div key={turn.turn_index} className="rounded-2xl border border-border bg-surface overflow-hidden">
             <div className="bg-canvas border-b border-border px-6 py-4 flex items-center justify-between">
               <h4 className="font-semibold text-ink">Question {turn.turn_index}</h4>
-              <div className="text-sm font-medium text-accent">Score: {turn.evaluation.score}/100</div>
+              {turn.evaluation && (
+                <div className="text-sm font-medium text-accent">Score: {turn.evaluation.score}/100</div>
+              )}
             </div>
             
             <div className="p-6 space-y-6">
@@ -175,65 +231,71 @@ export default function MockInterviewHistoryDetail({ detail, onBack }: Props) {
               
               <div>
                 <div className="text-xs font-semibold uppercase tracking-wider text-ink-faint mb-2">Candidate Answer</div>
-                <div className="text-sm text-ink-soft leading-relaxed italic bg-canvas p-4 rounded-xl border border-border">"{turn.answer}"</div>
+                {turn.answer ? (
+                  <div className="text-sm text-ink-soft leading-relaxed italic bg-canvas p-4 rounded-xl border border-border">"{turn.answer}"</div>
+                ) : (
+                  <div className="text-sm text-ink-faint italic">No answer provided.</div>
+                )}
               </div>
 
-              <div className="border-t border-border pt-6">
-                <div className="mb-6">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-ink-faint mb-3">Evaluation</div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div>
-                      <div className="text-ink-faint text-[10px] font-semibold uppercase tracking-wider mb-1">Technical</div>
-                      <div className="text-sm font-medium text-ink">{turn.evaluation.technical_score}/100</div>
-                    </div>
-                    <div>
-                      <div className="text-ink-faint text-[10px] font-semibold uppercase tracking-wider mb-1">Communication</div>
-                      <div className="text-sm font-medium text-ink">{turn.evaluation.communication_score}/100</div>
-                    </div>
-                    <div>
-                      <div className="text-ink-faint text-[10px] font-semibold uppercase tracking-wider mb-1">Problem Solving</div>
-                      <div className="text-sm font-medium text-ink">{turn.evaluation.problem_solving_score}/100</div>
-                    </div>
-                    <div>
-                      <div className="text-ink-faint text-[10px] font-semibold uppercase tracking-wider mb-1">Relevance</div>
-                      <div className="text-sm font-medium text-ink">{turn.evaluation.relevance_score}/100</div>
+              {turn.evaluation && (
+                <div className="border-t border-border pt-6">
+                  <div className="mb-6">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-ink-faint mb-3">Evaluation</div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div>
+                        <div className="text-ink-faint text-[10px] font-semibold uppercase tracking-wider mb-1">Technical</div>
+                        <div className="text-sm font-medium text-ink">{turn.evaluation.technical_score}/100</div>
+                      </div>
+                      <div>
+                        <div className="text-ink-faint text-[10px] font-semibold uppercase tracking-wider mb-1">Communication</div>
+                        <div className="text-sm font-medium text-ink">{turn.evaluation.communication_score}/100</div>
+                      </div>
+                      <div>
+                        <div className="text-ink-faint text-[10px] font-semibold uppercase tracking-wider mb-1">Problem Solving</div>
+                        <div className="text-sm font-medium text-ink">{turn.evaluation.problem_solving_score}/100</div>
+                      </div>
+                      <div>
+                        <div className="text-ink-faint text-[10px] font-semibold uppercase tracking-wider mb-1">Relevance</div>
+                        <div className="text-sm font-medium text-ink">{turn.evaluation.relevance_score}/100</div>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="mb-4">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-ink-faint mb-2">Feedback</div>
-                  <div className="text-sm text-ink-soft leading-relaxed">{turn.evaluation.feedback}</div>
-                </div>
+                  <div className="mb-4">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-ink-faint mb-2">Feedback</div>
+                    <div className="text-sm text-ink-soft leading-relaxed">{turn.evaluation.feedback}</div>
+                  </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {turn.evaluation.strengths && turn.evaluation.strengths.length > 0 && (
-                    <div>
-                      <div className="text-xs font-semibold text-success mb-2">Strengths</div>
-                      <ul className="space-y-1">
-                        {turn.evaluation.strengths.map((s, i) => (
-                          <li key={i} className="text-xs text-ink-soft flex items-start gap-1.5">
-                            <span className="text-success">•</span> {s}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  
-                  {turn.evaluation.improvements && turn.evaluation.improvements.length > 0 && (
-                    <div>
-                      <div className="text-xs font-semibold text-warn mb-2">Areas to Improve</div>
-                      <ul className="space-y-1">
-                        {turn.evaluation.improvements.map((s, i) => (
-                          <li key={i} className="text-xs text-ink-soft flex items-start gap-1.5">
-                            <span className="text-warn">•</span> {s}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {turn.evaluation.strengths && turn.evaluation.strengths.length > 0 && (
+                      <div>
+                        <div className="text-xs font-semibold text-success mb-2">Strengths</div>
+                        <ul className="space-y-1">
+                          {turn.evaluation.strengths.map((s, i) => (
+                            <li key={i} className="text-xs text-ink-soft flex items-start gap-1.5">
+                              <span className="text-success">•</span> {s}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {turn.evaluation.improvements && turn.evaluation.improvements.length > 0 && (
+                      <div>
+                        <div className="text-xs font-semibold text-warn mb-2">Areas to Improve</div>
+                        <ul className="space-y-1">
+                          {turn.evaluation.improvements.map((s, i) => (
+                            <li key={i} className="text-xs text-ink-soft flex items-start gap-1.5">
+                              <span className="text-warn">•</span> {s}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         ))}

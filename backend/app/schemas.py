@@ -16,6 +16,7 @@ class StartInterviewRequest(BaseModel):
     question_count: int = Field(default=5, ge=1, le=20)
     api_provider: Literal["user", "evalynx"] = "evalynx"
     groq_api_key: str | None = None
+    security_mode: Literal["standard", "proctored"] = "standard"
 
 
 class StartInterviewResponse(BaseModel):
@@ -133,6 +134,9 @@ class ResumeScreeningHistoryItem(BaseModel):
     top_score: float | None
     status: str
 
+class CompleteInterviewRequest(BaseModel):
+    proctoring_metadata: list[dict] | None = None
+
 class MockInterviewHistoryItem(BaseModel):
     id: str
     created_at: datetime
@@ -141,6 +145,8 @@ class MockInterviewHistoryItem(BaseModel):
     total_questions: int
     overall_score: int | None
     is_complete: bool
+    security_mode: str
+    proctoring_metadata: list[dict] | None
 
 class CourseRecommendationHistoryItem(BaseModel):
     id: str

@@ -63,6 +63,7 @@ async def start(
     resume: UploadFile | None = File(None),
     api_provider: str = Form("evalynx"),
     groq_api_key: str | None = Form(None),
+    security_mode: str = Form("standard"),
     db: Session = Depends(get_db),
 ):
     if api_provider == "user" and (not groq_api_key or not groq_api_key.strip()):
@@ -124,6 +125,7 @@ async def start(
         question_count=question_count,
         api_provider=api_provider,
         api_key=groq_api_key,
+        security_mode=security_mode,
     )
 
     return StartInterviewResponse(
@@ -275,11 +277,15 @@ async def speak(
     )
 
 
+from app.schemas import PaginatedResponse, MockInterviewHistoryItem, FinalEvaluation, CompleteInterviewRequest
+from fastapi import Body
+
 @router.post(
     "/{session_id}/complete"
 )
 async def complete(
     session_id: str,
+    payload: CompleteInterviewRequest | None = None,
     db: Session = Depends(get_db),
 ):
 
@@ -291,18 +297,26 @@ async def complete(
             detail="Interview session not found or expired.",
         )
 
+    if payload and payload.proctoring_metadata:
+        if session.security_mode != "proctored":
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot submit proctoring metadata for a standard interview.",
+            )
+        session.proctoring_metadata = payload.proctoring_metadata
+
     session.is_complete = True
 
     final = build_final_evaluation(
         session
     )
     
-    session.final_evaluation = final.model_dump()
+    # final is already a dictionary returned by build_final_evaluation
+    session.final_evaluation = final
     save_session(db, session)
 
     return final
 
-from app.schemas import PaginatedResponse, MockInterviewHistoryItem, FinalEvaluation
 from app.models.interview import InterviewSessionModel
 
 @router.get("/history", response_model=PaginatedResponse[MockInterviewHistoryItem])
@@ -327,7 +341,9 @@ async def get_history(page: int = 1, page_size: int = 10, db: Session = Depends(
             "mode": item.mode or "standard",
             "total_questions": int(item.total_questions) if item.total_questions is not None else 0,
             "overall_score": overall,
-            "is_complete": bool(item.is_complete)
+            "is_complete": bool(item.is_complete),
+            "security_mode": str(item.security_mode),
+            "proctoring_metadata": item.proctoring_metadata if isinstance(item.proctoring_metadata, list) else None
         })
         
     return {
@@ -353,6 +369,8 @@ async def get_history_detail(id: str, db: Session = Depends(get_db)):
         "duration_minutes": history_item.duration_minutes,
         "total_questions": history_item.total_questions,
         "is_complete": history_item.is_complete,
+        "security_mode": history_item.security_mode,
+        "proctoring_metadata": history_item.proctoring_metadata,
         "final_evaluation": history_item.final_evaluation,
         "turns": [
             {

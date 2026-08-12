@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { History, Eye, Loader2 } from "lucide-react";
+import { History, Eye, Loader2, ArrowLeft } from "lucide-react";
 import Button from "./Button";
 import Pagination from "./common/Pagination";
 import { getMockInterviewHistory, getMockInterviewHistoryDetail, type MockInterviewHistoryItem } from "../services/historyApi";
@@ -46,16 +46,17 @@ export default function MockInterviewHistory({ onClose, onSelectDetail }: MockIn
   };
 
   return (
-    <div className="rounded-2xl border border-border bg-surface p-5 sm:p-6 mt-8">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="font-display text-xl font-semibold text-ink">Mock Interview History</h2>
-          <p className="mt-1 text-sm text-ink-faint">Your past mock interviews</p>
-        </div>
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          Close History
+    <div className="w-full">
+      <div className="flex items-center gap-4 mb-6">
+        <Button variant="secondary" size="sm" onClick={onClose}>
+          <ArrowLeft size={16} className="mr-1" /> Back to Setup
         </Button>
       </div>
+
+      <div className="rounded-2xl border border-border bg-surface p-5 sm:p-6 mb-6">
+        <div className="flex flex-col mb-6">
+          <h2 className="font-display text-xl font-semibold text-ink">Mock Interview History</h2>
+        </div>
 
       {isLoading ? (
         <div className="flex h-32 items-center justify-center text-ink-faint">
@@ -109,6 +110,7 @@ export default function MockInterviewHistory({ onClose, onSelectDetail }: MockIn
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </>
       )}
+      </div>
     </div>
   );
 }

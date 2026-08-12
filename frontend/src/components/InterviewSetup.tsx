@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { FileText, Sparkles, Target, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { FileText, Sparkles, Target, X, Shield, ShieldCheck } from "lucide-react";
 import type {
   InterviewConfig,
   InterviewMode,
   InterviewSource,
   ApiProvider,
+  SecurityMode,
 } from "../types/interview";
 import FileUpload from "./FileUpload";
 import FileList from "./FileList";
@@ -24,11 +25,54 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
   const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState("");
   const [mode, setMode] = useState<InterviewMode>("standard");
+  const [securityMode, setSecurityMode] = useState<SecurityMode>("standard");
   const [duration, setDuration] = useState(30);
   const [questionCount, setQuestionCount] = useState(10);
   const [allowTyping, setAllowTyping] = useState(true);
   const [apiProvider, setApiProvider] = useState<ApiProvider>("user");
   const [groqApiKey, setGroqApiKey] = useState("");
+  const [isMobileOrTablet, setIsMobileOrTablet] = useState(false);
+
+  useEffect(() => {
+    const checkDeviceCapability = async () => {
+      // Basic width check
+      if (window.innerWidth < 1024) {
+        setIsMobileOrTablet(true);
+        return;
+      }
+      
+      // Touch capability
+      const hasTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+      
+      // User agent heuristic
+      const ua = navigator.userAgent.toLowerCase();
+      const isMobileUA = /android|webos|iphone|ipad|ipod|blackberry|windows phone/i.test(ua);
+      
+      // Fullscreen support
+      const hasFullscreen = document.fullscreenEnabled || 
+        (document as any).webkitFullscreenEnabled || 
+        (document as any).mozFullScreenEnabled ||
+        (document as any).msFullscreenEnabled;
+        
+      if (isMobileUA || (hasTouch && !hasFullscreen)) {
+        setIsMobileOrTablet(true);
+      }
+    };
+    
+    checkDeviceCapability();
+    
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        setIsMobileOrTablet(true);
+      } else {
+        // Don't flip back automatically if they just resize window, 
+        // rely on initial capability check for actual device nature
+      }
+    };
+    
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const addSkill = () => {
     const trimmed = skillInput.trim();
@@ -39,7 +83,7 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
   };
 
   const hasNonAsciiKey = apiProvider === "user" && /[^\x00-\x7F]/.test(groqApiKey);
-  const canStart = (source === "role" ? role.trim().length > 0 : !!resumeFile) && !hasNonAsciiKey;
+  const canStart = (source === "role" ? role.trim().length > 0 : !!resumeFile) && !hasNonAsciiKey && !(securityMode === "proctored" && isMobileOrTablet);
 
   return (
     <div className="flex flex-col gap-6">
@@ -174,6 +218,70 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
         </div>
       </section>
 
+      {/* Interview Security */}
+      <section className="rounded-2xl border border-border bg-surface p-5 sm:p-6">
+        <h3 className="text-sm font-semibold text-ink">Interview Security</h3>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <button
+            onClick={() => setSecurityMode("standard")}
+            className={`rounded-xl border p-4 text-left transition-colors flex flex-col justify-between ${securityMode === "standard"
+                ? "border-accent bg-accent-soft"
+                : "border-border hover:border-border-strong"
+              }`}
+          >
+            <div>
+              <span className="flex items-center gap-2 text-sm font-medium text-ink">
+                <Shield size={16} className={securityMode === "standard" ? "text-accent" : "text-ink-soft"} />
+                Standard
+              </span>
+              <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+                Normal interview experience. No proctoring.
+              </p>
+            </div>
+          </button>
+          
+          <button
+            onClick={() => setSecurityMode("proctored")}
+            className={`rounded-xl border p-4 text-left transition-colors flex flex-col justify-between ${securityMode === "proctored"
+                ? "border-accent bg-accent-soft"
+                : "border-border hover:border-border-strong"
+              } ${isMobileOrTablet ? "opacity-60 cursor-not-allowed bg-canvas border-dashed" : ""}`}
+            disabled={isMobileOrTablet && securityMode !== "proctored"}
+          >
+            <div>
+              <span className="flex items-center gap-2 text-sm font-medium text-ink">
+                <ShieldCheck size={16} className={securityMode === "proctored" ? "text-accent" : "text-ink-soft"} />
+                Proctored
+              </span>
+              <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+                {isMobileOrTablet 
+                  ? "Desktop only" 
+                  : "Secure interview with camera and browser monitoring."}
+              </p>
+              {securityMode === "proctored" && !isMobileOrTablet && (
+                <p className="mt-2 text-[10px] font-medium text-accent">
+                  Camera and fullscreen access will be required.
+                </p>
+              )}
+            </div>
+          </button>
+        </div>
+        
+        {securityMode === "proctored" && isMobileOrTablet && (
+          <div className="mt-4 rounded-xl border border-warn/30 bg-warn/5 p-4 flex flex-col gap-3">
+            <p className="text-sm text-warn-strong font-medium">
+              Proctored mode is available on laptop/desktop only.
+            </p>
+            <p className="text-xs text-ink-soft">
+              For a secure interview, camera monitoring, fullscreen mode, and proctoring controls require a larger desktop environment.
+            </p>
+            <Button size="sm" variant="outline" onClick={() => setSecurityMode("standard")} className="w-fit">
+              Use Standard Interview
+            </Button>
+          </div>
+        )}
+      </section>
+
       {/* Duration + question count */}
       <section className="grid grid-cols-1 gap-6 rounded-2xl border border-border bg-surface p-5 sm:grid-cols-2 sm:p-6">
         <div>
@@ -277,7 +385,6 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
               <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-faint">
                 Groq API Key
               </label>
-              {/* Dummy hidden fields to defeat aggressive browser password managers */}
               <input type="text" name="fakeusernameremembered" className="hidden" aria-hidden="true" style={{ display: 'none' }} />
               <input type="password" name="fakepasswordremembered" className="hidden" aria-hidden="true" style={{ display: 'none' }} />
               <input
@@ -361,6 +468,7 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
             allowTyping,
             apiProvider,
             groqApiKey: apiProvider === "user" ? groqApiKey : undefined,
+            securityMode,
           })
         }
         className="w-full sm:w-auto sm:self-end"

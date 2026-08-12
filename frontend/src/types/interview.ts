@@ -2,6 +2,7 @@ export type InterviewSource = "resume" | "role";
 export type InterviewMode = "standard" | "dynamic";
 export type AnswerMethod = "voice" | "text";
 export type ApiProvider = "user" | "evalynx";
+export type SecurityMode = "standard" | "proctored";
 
 export type InterviewState =
   | "idle"
@@ -34,6 +35,7 @@ export interface InterviewConfig {
   allowTyping: boolean;
   apiProvider: ApiProvider;
   groqApiKey?: string;
+  securityMode: SecurityMode;
 }
 
 export interface ChatMessage {
@@ -66,6 +68,7 @@ export interface StartInterviewPayload {
   question_count: number;
   api_provider: ApiProvider;
   groq_api_key?: string;
+  security_mode: SecurityMode;
 }
 
 export interface StartInterviewResponse {

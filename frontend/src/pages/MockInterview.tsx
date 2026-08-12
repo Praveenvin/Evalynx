@@ -15,6 +15,10 @@ import {
   submitVoiceAnswer,
   completeInterview,
 } from "../services/interviewApi";
+import ProctoringRulesModal from "../components/proctoring/ProctoringRulesModal";
+import ProctoringWrapper from "../components/proctoring/ProctoringWrapper";
+import type { SecurityMode } from "../types/interview";
+import type { Violation } from "../services/proctoring/violationManager";
 import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
 import { ApiError } from "../services/api";
 import type {
@@ -33,7 +37,13 @@ export default function MockInterview() {
   const [setupError, setSetupError] = useState<string | ApiErrorDetail | null>(null);
   const [isStarting, setIsStarting] = useState(false);
 
+  const [securityMode, setSecurityMode] = useState<SecurityMode>("standard");
+  const [showProctoringModal, setShowProctoringModal] = useState(false);
+  const [isInitializingProctoring, setIsInitializingProctoring] = useState(false);
+  const [pendingConfig, setPendingConfig] = useState<InterviewConfig | null>(null);
+
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const isCompleting = useRef(false);
   const [totalQuestions, setTotalQuestions] = useState(0);
   const [questionNumber, setQuestionNumber] = useState(0);
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
@@ -75,7 +85,8 @@ export default function MockInterview() {
   }, [stage, timeLeft]);
 
   const handleTimeUp = async () => {
-    if (!sessionId) return;
+    if (isCompleting.current || !sessionId) return;
+    isCompleting.current = true;
     setInterviewState("evaluating");
     setChatError(null);
     try {
@@ -91,6 +102,26 @@ export default function MockInterview() {
     }
   };
 
+  const handleAutoSubmit = async (violations: Violation[]) => {
+    if (isCompleting.current || !sessionId) return;
+    isCompleting.current = true;
+    setInterviewState("evaluating");
+    setChatError(null);
+    try {
+      // Pass the raw violations directly. 
+      // Ensure backend `CompleteInterviewRequest` accepts this structure.
+      const response = await completeInterview(sessionId, violations as any);
+      setResult(response);
+      setStage("result");
+    } catch (err: any) {
+      setChatError(
+        err instanceof ApiError
+          ? err.message
+          : "Auto-submitted due to proctoring violations, but couldn't fetch the final result."
+      );
+    }
+  };
+
   const playQuestionAudio = (text: string) => {
     if (isMuted) {
       return;
@@ -98,9 +129,38 @@ export default function MockInterview() {
     speak(text);
   };
 
-  const handleStart = async (config: InterviewConfig) => {
+  const handleStart = (config: InterviewConfig) => {
+    if (config.securityMode === "proctored") {
+      setPendingConfig(config);
+      setShowProctoringModal(true);
+    } else {
+      executeStart(config);
+    }
+  };
+
+  const handleProctoringAccept = () => {
+    setShowProctoringModal(false);
+    setSecurityMode("proctored");
+    setIsInitializingProctoring(true);
+  };
+
+  const handleProctoringReady = () => {
+    if (pendingConfig) {
+      setIsInitializingProctoring(false);
+      executeStart(pendingConfig);
+    }
+  };
+
+  const handleProctoringCancel = () => {
+    setIsInitializingProctoring(false);
+    setPendingConfig(null);
+    setSecurityMode("standard");
+  };
+
+  const executeStart = async (config: InterviewConfig) => {
     setIsStarting(true);
     setSetupError(null);
+    
     try {
       const response = await startInterview(
         {
@@ -112,6 +172,7 @@ export default function MockInterview() {
           question_count: config.questionCount,
           api_provider: config.apiProvider,
           groq_api_key: config.groqApiKey,
+          security_mode: config.securityMode,
         },
         config.resumeFile
       );
@@ -122,6 +183,7 @@ export default function MockInterview() {
       setCurrentQuestion(response.question);
       setAllowTyping(config.allowTyping);
       setTimeLeft(config.durationMinutes * 60);
+      setSecurityMode(config.securityMode);
       setMessages([
         { id: crypto.randomUUID(), role: "interviewer", content: response.question },
       ]);
@@ -219,6 +281,7 @@ export default function MockInterview() {
     setStage("setup");
     setSetupError(null);
     setSessionId(null);
+    isCompleting.current = false;
     setMessages([]);
     setQuestionNumber(0);
     setTotalQuestions(0);
@@ -231,7 +294,7 @@ export default function MockInterview() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
-      {stage !== "chat" && (
+      {stage !== "chat" && stage !== "history" && stage !== "history_detail" && (
         <div className="flex items-center justify-between">
           <Link
             to="/"
@@ -285,6 +348,25 @@ export default function MockInterview() {
             <p className="mt-3 text-sm text-ink-faint">Starting interview...</p>
           )}
         </div>
+      )}
+
+      {showProctoringModal && pendingConfig && (
+        <ProctoringRulesModal 
+          onAccept={handleProctoringAccept} 
+          onCancel={() => {
+            setShowProctoringModal(false);
+            setPendingConfig(null);
+          }} 
+        />
+      )}
+
+      {(isInitializingProctoring || isStarting || (stage === "chat" && sessionId)) && securityMode === "proctored" && (
+        <ProctoringWrapper 
+          securityMode={securityMode} 
+          onAutoSubmit={handleAutoSubmit} 
+          onReady={handleProctoringReady}
+          onCancel={handleProctoringCancel}
+        />
       )}
 
       {stage === "chat" && sessionId && (
