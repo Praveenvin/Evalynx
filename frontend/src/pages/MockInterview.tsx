@@ -21,12 +21,13 @@ import type {
   InterviewState,
   ChatMessage as ChatMessageType,
 } from "../types/interview";
+import ErrorPopup, { type ApiErrorDetail } from "../components/ErrorPopup";
 
 type Stage = "setup" | "chat" | "result";
 
 export default function MockInterview() {
   const [stage, setStage] = useState<Stage>("setup");
-  const [setupError, setSetupError] = useState<string | null>(null);
+  const [setupError, setSetupError] = useState<string | ApiErrorDetail | null>(null);
   const [isStarting, setIsStarting] = useState(false);
 
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -37,7 +38,7 @@ export default function MockInterview() {
 
   const [interviewState, setInterviewState] = useState<InterviewState>("idle");
   const [transcript, setTranscript] = useState("");
-  const [chatError, setChatError] = useState<string | null>(null);
+  const [chatError, setChatError] = useState<string | ApiErrorDetail | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [allowTyping, setAllowTyping] = useState(true);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -78,7 +79,7 @@ export default function MockInterview() {
       const response = await completeInterview(sessionId);
       setResult(response);
       setStage("result");
-    } catch (err) {
+    } catch (err: any) {
       setChatError(
         err instanceof ApiError
           ? err.message
@@ -123,7 +124,7 @@ export default function MockInterview() {
       ]);
       setStage("chat");
       playQuestionAudio(response.question);
-    } catch (err) {
+    } catch (err: any) {
       setSetupError(
         err instanceof ApiError
           ? err.message
@@ -142,7 +143,7 @@ export default function MockInterview() {
       const { text } = await submitVoiceAnswer(sessionId, blob);
       setTranscript(text);
       setInterviewState("reviewing_transcript");
-    } catch (err) {
+    } catch (err: any) {
       setChatError(
         err instanceof ApiError
           ? err.message
@@ -189,7 +190,7 @@ export default function MockInterview() {
       ]);
       playQuestionAudio(nextQuestion);
       setInterviewState("idle");
-    } catch (err) {
+    } catch (err: any) {
       setChatError(
         err instanceof ApiError
           ? err.message
@@ -249,11 +250,7 @@ export default function MockInterview() {
 
       {stage === "setup" && (
         <div className="mt-8">
-          {setupError && (
-            <p className="mb-4 rounded-lg bg-weak-soft px-4 py-3 text-sm text-weak">
-              {setupError}
-            </p>
-          )}
+          {setupError && <ErrorPopup error={setupError} />}
           <InterviewSetup onStart={handleStart} />
           {isStarting && (
             <p className="mt-3 text-sm text-ink-faint">Starting interview...</p>
@@ -319,11 +316,7 @@ export default function MockInterview() {
           </div>
 
           <div className="border-t border-border p-4">
-            {chatError && (
-              <p className="mb-3 rounded-lg bg-weak-soft px-3 py-2 text-xs text-weak">
-                {chatError}
-              </p>
-            )}
+            {chatError && <ErrorPopup error={chatError} />}
             <AnswerPanel
               state={interviewState}
               onRecordingComplete={handleRecordingComplete}

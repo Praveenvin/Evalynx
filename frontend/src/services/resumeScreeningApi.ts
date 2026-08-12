@@ -4,6 +4,7 @@ import type { ScreeningResponse } from "../types/resumeScreening";
 export async function screenResumes(
   jobDescription: string,
   resumes: File[],
+  apiProvider: "user" | "evalynx" = "evalynx",
   groqApiKey?: string
 ): Promise<ScreeningResponse> {
   const formData = new FormData();
@@ -11,6 +12,7 @@ export async function screenResumes(
   resumes.forEach((file) => {
     formData.append("resumes", file);
   });
+  formData.append("api_provider", apiProvider);
   if (groqApiKey) {
     formData.append("groq_api_key", groqApiKey);
   }

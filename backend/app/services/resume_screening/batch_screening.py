@@ -7,6 +7,7 @@ from app.services.resume_screening.retriever import (
     CandidateRetriever,
 )
 from app.services.llm.groq_service import groq_service
+from app.services.llm.groq_client import GroqServiceError
 
 from sqlalchemy.orm import Session
 
@@ -37,6 +38,7 @@ class BatchScreeningService:
         directory: str,
         job_description: str,
         top_k: int = 5,
+        api_provider: str = "evalynx",
         api_key: str | None = None,
     ) -> list[dict]:
 
@@ -82,6 +84,7 @@ class BatchScreeningService:
                     groq_service.evaluate_candidate(
                         job_description=job_description,
                         evidence=evidence,
+                        api_provider=api_provider,
                         api_key=api_key,
                     )
                 )
@@ -126,6 +129,9 @@ class BatchScreeningService:
 
                 results.append(result)
 
+            except GroqServiceError:
+                db.rollback()
+                raise
             except Exception as error:
                 db.rollback()
                 print(

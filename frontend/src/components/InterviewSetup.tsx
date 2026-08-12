@@ -20,14 +20,14 @@ const questionCounts = [5, 10, 15, 20];
 export default function InterviewSetup({ onStart }: InterviewSetupProps) {
   const [source, setSource] = useState<InterviewSource>("role");
   const [resumeFile, setResumeFile] = useState<File | null>(null);
-  const [role, setRole] = useState("Software Developer");
-  const [skills, setSkills] = useState<string[]>(["React", "TypeScript", "Python"]);
+  const [role, setRole] = useState("");
+  const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState("");
   const [mode, setMode] = useState<InterviewMode>("standard");
   const [duration, setDuration] = useState(30);
   const [questionCount, setQuestionCount] = useState(10);
   const [allowTyping, setAllowTyping] = useState(true);
-  const [apiProvider, setApiProvider] = useState<ApiProvider>("custom");
+  const [apiProvider, setApiProvider] = useState<ApiProvider>("user");
   const [groqApiKey, setGroqApiKey] = useState("");
 
   const addSkill = () => {
@@ -38,7 +38,7 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
     setSkillInput("");
   };
 
-  const hasNonAsciiKey = apiProvider === "custom" && /[^\x00-\x7F]/.test(groqApiKey);
+  const hasNonAsciiKey = apiProvider === "user" && /[^\x00-\x7F]/.test(groqApiKey);
   const canStart = (source === "role" ? role.trim().length > 0 : !!resumeFile) && !hasNonAsciiKey;
 
   return (
@@ -49,11 +49,10 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <button
             onClick={() => setSource("resume")}
-            className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-colors ${
-              source === "resume"
+            className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-colors ${source === "resume"
                 ? "border-accent bg-accent-soft"
                 : "border-border hover:border-border-strong"
-            }`}
+              }`}
           >
             <FileText size={18} className="text-accent" />
             <span className="text-sm font-medium text-ink">
@@ -62,11 +61,10 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
           </button>
           <button
             onClick={() => setSource("role")}
-            className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-colors ${
-              source === "role"
+            className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-colors ${source === "role"
                 ? "border-accent bg-accent-soft"
                 : "border-border hover:border-border-strong"
-            }`}
+              }`}
           >
             <Target size={18} className="text-accent" />
             <span className="text-sm font-medium text-ink">
@@ -127,7 +125,7 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
                   value={skillInput}
                   onChange={(e) => setSkillInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") {
+                    if (e.key === "Enter" || e.key === ",") {
                       e.preventDefault();
                       addSkill();
                     }
@@ -148,11 +146,10 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <button
             onClick={() => setMode("standard")}
-            className={`rounded-xl border p-4 text-left transition-colors ${
-              mode === "standard"
+            className={`rounded-xl border p-4 text-left transition-colors ${mode === "standard"
                 ? "border-accent bg-accent-soft"
                 : "border-border hover:border-border-strong"
-            }`}
+              }`}
           >
             <span className="text-sm font-medium text-ink">Standard</span>
             <p className="mt-1 text-xs leading-relaxed text-ink-soft">
@@ -161,11 +158,10 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
           </button>
           <button
             onClick={() => setMode("dynamic")}
-            className={`relative rounded-xl border p-4 text-left transition-colors ${
-              mode === "dynamic"
+            className={`relative rounded-xl border p-4 text-left transition-colors ${mode === "dynamic"
                 ? "border-accent bg-accent-soft"
                 : "border-border hover:border-border-strong"
-            }`}
+              }`}
           >
             <span className="inline-flex items-center gap-1 text-sm font-medium text-ink">
               Dynamic
@@ -187,11 +183,10 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
               <button
                 key={d}
                 onClick={() => setDuration(d)}
-                className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
-                  duration === d
+                className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${duration === d
                     ? "border-accent bg-accent-soft text-accent-hover"
                     : "border-border text-ink-soft hover:border-border-strong"
-                }`}
+                  }`}
               >
                 {d} min
               </button>
@@ -207,11 +202,10 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
               <button
                 key={q}
                 onClick={() => setQuestionCount(q)}
-                className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
-                  questionCount === q
+                className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${questionCount === q
                     ? "border-accent bg-accent-soft text-accent-hover"
                     : "border-border text-ink-soft hover:border-border-strong"
-                }`}
+                  }`}
               >
                 {q}
               </button>
@@ -249,21 +243,19 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
         <h3 className="text-sm font-semibold text-ink">AI Provider</h3>
         <div className="mt-3 grid grid-cols-1 gap-3">
           <button
-            onClick={() => setApiProvider("custom")}
-            className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-colors ${
-              apiProvider === "custom"
+            onClick={() => setApiProvider("user")}
+            className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-colors ${apiProvider === "user"
                 ? "border-accent bg-accent-soft"
                 : "border-border hover:border-border-strong"
-            }`}
+              }`}
           >
             <div
-              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                apiProvider === "custom"
+              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${apiProvider === "user"
                   ? "border-accent bg-accent"
                   : "border-ink-faint"
-              }`}
+                }`}
             >
-              {apiProvider === "custom" && (
+              {apiProvider === "user" && (
                 <div className="h-2 w-2 rounded-full bg-white" />
               )}
             </div>
@@ -280,21 +272,27 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
             </div>
           </button>
 
-          {apiProvider === "custom" && (
+          {apiProvider === "user" && (
             <div className="ml-7 mt-1 max-w-sm">
               <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-faint">
                 Groq API Key
               </label>
+              {/* Dummy hidden fields to defeat aggressive browser password managers */}
+              <input type="text" name="fakeusernameremembered" className="hidden" aria-hidden="true" style={{ display: 'none' }} />
+              <input type="password" name="fakepasswordremembered" className="hidden" aria-hidden="true" style={{ display: 'none' }} />
               <input
                 type="password"
+                name={`groq-api-key-${Math.random().toString(36).substring(2)}`}
+                autoComplete="new-password"
+                data-lpignore="true"
+                data-1p-ignore="true"
                 placeholder="Enter your Groq API key"
                 value={groqApiKey}
                 onChange={(e) => setGroqApiKey(e.target.value)}
-                className={`w-full rounded-lg border bg-canvas px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent ${
-                  hasNonAsciiKey
+                className={`w-full rounded-lg border bg-canvas px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent ${hasNonAsciiKey
                     ? "border-warn focus:border-warn"
                     : "border-border"
-                }`}
+                  }`}
               />
               {hasNonAsciiKey ? (
                 <p className="mt-1.5 text-xs font-medium text-warn">
@@ -320,21 +318,19 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
           )}
 
           <button
-            onClick={() => setApiProvider("builtin")}
-            className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-colors ${
-              apiProvider === "builtin"
+            onClick={() => setApiProvider("evalynx")}
+            className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-colors ${apiProvider === "evalynx"
                 ? "border-accent bg-accent-soft"
                 : "border-border hover:border-border-strong"
-            }`}
+              }`}
           >
             <div
-              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                apiProvider === "builtin"
+              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${apiProvider === "evalynx"
                   ? "border-accent bg-accent"
                   : "border-ink-faint"
-              }`}
+                }`}
             >
-              {apiProvider === "builtin" && (
+              {apiProvider === "evalynx" && (
                 <div className="h-2 w-2 rounded-full bg-white" />
               )}
             </div>
@@ -364,7 +360,7 @@ export default function InterviewSetup({ onStart }: InterviewSetupProps) {
             questionCount,
             allowTyping,
             apiProvider,
-            groqApiKey: apiProvider === "custom" ? groqApiKey : undefined,
+            groqApiKey: apiProvider === "user" ? groqApiKey : undefined,
           })
         }
         className="w-full sm:w-auto sm:self-end"

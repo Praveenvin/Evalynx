@@ -7,6 +7,7 @@ import { recommendCourses } from "../services/courseRecommendationApi";
 import { ApiError } from "../services/api";
 import type { CourseRecommendationResponse } from "../types/courseRecommendation";
 import type { ApiProvider } from "../types/interview";
+import ErrorPopup, { type ApiErrorDetail } from "../components/ErrorPopup";
 
 function TagInput({
   label,
@@ -77,13 +78,13 @@ export default function CourseRecommendation() {
   const [interests, setInterests] = useState<string[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | ApiErrorDetail | null>(null);
   const [result, setResult] = useState<CourseRecommendationResponse | null>(null);
 
-  const [apiProvider, setApiProvider] = useState<ApiProvider>("custom");
+  const [apiProvider, setApiProvider] = useState<ApiProvider>("user");
   const [groqApiKey, setGroqApiKey] = useState("");
 
-  const hasNonAsciiKey = apiProvider === "custom" && /[^\x00-\x7F]/.test(groqApiKey);
+  const hasNonAsciiKey = apiProvider === "user" && /[^\x00-\x7F]/.test(groqApiKey);
   const canSubmit = name.trim().length > 0 && careerGoal.trim().length > 0 && !hasNonAsciiKey;
 
   const handleSubmit = async () => {
@@ -98,10 +99,11 @@ export default function CourseRecommendation() {
         career_goal: careerGoal.trim(),
         current_skills: currentSkills,
         interests,
-        groq_api_key: apiProvider === "custom" ? groqApiKey : undefined,
+        api_provider: apiProvider,
+        groq_api_key: apiProvider === "user" ? groqApiKey : undefined,
       });
       setResult(response);
-    } catch (err) {
+    } catch (err: any) {
       setError(
         err instanceof ApiError
           ? err.message
@@ -202,21 +204,21 @@ export default function CourseRecommendation() {
             <h2 className="text-sm font-semibold text-ink">AI Provider</h2>
             <div className="mt-3 grid grid-cols-1 gap-3">
               <button
-                onClick={() => setApiProvider("custom")}
+                onClick={() => setApiProvider("user")}
                 className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-colors ${
-                  apiProvider === "custom"
+                  apiProvider === "user"
                     ? "border-accent bg-accent-soft"
                     : "border-border hover:border-border-strong"
                 }`}
               >
                 <div
                   className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                    apiProvider === "custom"
+                    apiProvider === "user"
                       ? "border-accent bg-accent"
                       : "border-ink-faint"
                   }`}
                 >
-                  {apiProvider === "custom" && (
+                  {apiProvider === "user" && (
                     <div className="h-2 w-2 rounded-full bg-white" />
                   )}
                 </div>
@@ -233,13 +235,20 @@ export default function CourseRecommendation() {
                 </div>
               </button>
 
-              {apiProvider === "custom" && (
+              {apiProvider === "user" && (
                 <div className="ml-7 mt-1 max-w-sm">
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-faint">
                     Groq API Key
                   </label>
+                  {/* Dummy hidden fields to defeat aggressive browser password managers */}
+                  <input type="text" name="fakeusernameremembered" className="hidden" aria-hidden="true" style={{ display: 'none' }} />
+                  <input type="password" name="fakepasswordremembered" className="hidden" aria-hidden="true" style={{ display: 'none' }} />
                   <input
                     type="password"
+                    name={`groq-api-key-${Math.random().toString(36).substring(2)}`}
+                    autoComplete="new-password"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     placeholder="Enter your Groq API key"
                     value={groqApiKey}
                     onChange={(e) => setGroqApiKey(e.target.value)}
@@ -272,21 +281,21 @@ export default function CourseRecommendation() {
               )}
 
               <button
-                onClick={() => setApiProvider("builtin")}
+                onClick={() => setApiProvider("evalynx")}
                 className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-colors ${
-                  apiProvider === "builtin"
+                  apiProvider === "evalynx"
                     ? "border-accent bg-accent-soft"
                     : "border-border hover:border-border-strong"
                 }`}
               >
                 <div
                   className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                    apiProvider === "builtin"
+                    apiProvider === "evalynx"
                       ? "border-accent bg-accent"
                       : "border-ink-faint"
                   }`}
                 >
-                  {apiProvider === "builtin" && (
+                  {apiProvider === "evalynx" && (
                     <div className="h-2 w-2 rounded-full bg-white" />
                   )}
                 </div>
@@ -302,11 +311,7 @@ export default function CourseRecommendation() {
             </div>
           </section>
 
-          {error && (
-            <p className="mt-4 rounded-lg bg-weak-soft px-4 py-3 text-sm text-weak">
-              {error}
-            </p>
-          )}
+          {error && <ErrorPopup error={error} />}
 
           <Button
             onClick={handleSubmit}
@@ -358,8 +363,9 @@ export default function CourseRecommendation() {
 
           {result.learning_path.length === 0 ? (
             <div className="mt-5 rounded-2xl border border-border bg-surface p-6 text-center text-sm text-ink-soft">
-              No additional courses needed right now — you already cover the
-              core skills for this goal.
+              {result.goal_supported 
+                ? "No additional courses needed right now — you already cover the core skills for this goal."
+                : "We currently do not offer courses for this specific career goal."}
             </div>
           ) : (
             <div className="mt-5 flex flex-col gap-4">

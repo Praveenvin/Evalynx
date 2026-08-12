@@ -14,6 +14,8 @@ class StartInterviewRequest(BaseModel):
     mode: InterviewMode
     duration: int = Field(default=15, ge=1, le=60)
     question_count: int = Field(default=5, ge=1, le=20)
+    api_provider: Literal["user", "evalynx"] = "evalynx"
+    groq_api_key: str | None = None
 
 
 class StartInterviewResponse(BaseModel):
@@ -81,6 +83,7 @@ class StudentProfile(BaseModel):
     career_goal: str = Field(..., min_length=1)
     current_skills: list[str] = Field(default_factory=list)
     interests: list[str] = Field(default_factory=list)
+    api_provider: Literal["user", "evalynx"] = "evalynx"
     groq_api_key: str | None = None
 
     @field_validator("current_skills", "interests", mode="before")
@@ -108,3 +111,4 @@ class CourseRecommendationResponse(BaseModel):
     skill_gaps: list[str]
     learning_path: list[LearningPathStep]
     summary: str
+    goal_supported: bool = True

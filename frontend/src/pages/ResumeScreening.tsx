@@ -10,19 +10,20 @@ import { screenResumes } from "../services/resumeScreeningApi";
 import type { CandidateResult, ScreeningResponse } from "../types/resumeScreening";
 import type { ApiProvider } from "../types/interview";
 import { ApiError } from "../services/api";
+import ErrorPopup, { type ApiErrorDetail } from "../components/ErrorPopup";
 
 export default function ResumeScreening() {
   const [jobDescription, setJobDescription] = useState("");
   const [resumes, setResumes] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | ApiErrorDetail | null>(null);
   const [results, setResults] = useState<ScreeningResponse | null>(null);
   const [selectedCandidate, setSelectedCandidate] =
     useState<CandidateResult | null>(null);
-  const [apiProvider, setApiProvider] = useState<ApiProvider>("custom");
+  const [apiProvider, setApiProvider] = useState<ApiProvider>("user");
   const [groqApiKey, setGroqApiKey] = useState("");
 
-  const hasNonAsciiKey = apiProvider === "custom" && /[^\x00-\x7F]/.test(groqApiKey);
+  const hasNonAsciiKey = apiProvider === "user" && /[^\x00-\x7F]/.test(groqApiKey);
   const canScreen = jobDescription.trim().length > 0 && resumes.length > 0 && !hasNonAsciiKey;
 
   const handleAddFiles = (files: File[]) => {
@@ -42,10 +43,11 @@ export default function ResumeScreening() {
       const response = await screenResumes(
         jobDescription,
         resumes,
-        apiProvider === "custom" ? groqApiKey : undefined
+        apiProvider,
+        apiProvider === "user" ? groqApiKey : undefined
       );
       setResults(response);
-    } catch (err) {
+    } catch (err: any) {
       setError(
         err instanceof ApiError
           ? err.message
@@ -105,21 +107,21 @@ export default function ResumeScreening() {
             <h2 className="text-sm font-semibold text-ink">AI Provider</h2>
             <div className="mt-3 grid grid-cols-1 gap-3">
               <button
-                onClick={() => setApiProvider("custom")}
+                onClick={() => setApiProvider("user")}
                 className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-colors ${
-                  apiProvider === "custom"
+                  apiProvider === "user"
                     ? "border-accent bg-accent-soft"
                     : "border-border hover:border-border-strong"
                 }`}
               >
                 <div
                   className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                    apiProvider === "custom"
+                    apiProvider === "user"
                       ? "border-accent bg-accent"
                       : "border-ink-faint"
                   }`}
                 >
-                  {apiProvider === "custom" && (
+                  {apiProvider === "user" && (
                     <div className="h-2 w-2 rounded-full bg-white" />
                   )}
                 </div>
@@ -136,13 +138,20 @@ export default function ResumeScreening() {
                 </div>
               </button>
 
-              {apiProvider === "custom" && (
+              {apiProvider === "user" && (
                 <div className="ml-7 mt-1 max-w-sm">
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-faint">
                     Groq API Key
                   </label>
+                  {/* Dummy hidden fields to defeat aggressive browser password managers */}
+                  <input type="text" name="fakeusernameremembered" className="hidden" aria-hidden="true" style={{ display: 'none' }} />
+                  <input type="password" name="fakepasswordremembered" className="hidden" aria-hidden="true" style={{ display: 'none' }} />
                   <input
                     type="password"
+                    name={`groq-api-key-${Math.random().toString(36).substring(2)}`}
+                    autoComplete="new-password"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     placeholder="Enter your Groq API key"
                     value={groqApiKey}
                     onChange={(e) => setGroqApiKey(e.target.value)}
@@ -175,21 +184,21 @@ export default function ResumeScreening() {
               )}
 
               <button
-                onClick={() => setApiProvider("builtin")}
+                onClick={() => setApiProvider("evalynx")}
                 className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-colors ${
-                  apiProvider === "builtin"
+                  apiProvider === "evalynx"
                     ? "border-accent bg-accent-soft"
                     : "border-border hover:border-border-strong"
                 }`}
               >
                 <div
                   className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                    apiProvider === "builtin"
+                    apiProvider === "evalynx"
                       ? "border-accent bg-accent"
                       : "border-ink-faint"
                   }`}
                 >
-                  {apiProvider === "builtin" && (
+                  {apiProvider === "evalynx" && (
                     <div className="h-2 w-2 rounded-full bg-white" />
                   )}
                 </div>
@@ -206,11 +215,7 @@ export default function ResumeScreening() {
           </section>
 
           <div className="lg:col-span-2">
-            {error && (
-              <p className="mb-4 rounded-lg bg-weak-soft px-4 py-3 text-sm text-weak">
-                {error}
-              </p>
-            )}
+            {error && <ErrorPopup error={error} />}
             <Button
               onClick={handleScreen}
               disabled={!canScreen || isLoading}

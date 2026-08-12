@@ -9,7 +9,14 @@ import json
 import logging
 from typing import Any
 
-from groq import Groq
+from groq import (
+    Groq,
+    APIStatusError,
+    APIConnectionError,
+    APITimeoutError,
+    AuthenticationError,
+    RateLimitError,
+)
 
 from app.core.config import get_settings
 
@@ -21,6 +28,9 @@ _client: Groq | None = None
 
 class GroqServiceError(Exception):
     """Raised when the Groq API fails or returns something unusable."""
+    def __init__(self, message: str, code: str = "AI_REQUEST_FAILED"):
+        super().__init__(message)
+        self.code = code
 
 
 def sanitize_api_key(key: str) -> str:
@@ -42,16 +52,19 @@ def sanitize_api_key(key: str) -> str:
             f"Your Groq API key contains non-ASCII characters: {bad_repr}. "
             "This usually happens when autocorrect replaces hyphens with "
             "em-dashes. Please copy the key again directly from "
-            "console.groq.com and paste it without formatting."
+            "console.groq.com and paste it without formatting.",
+            code="INVALID_API_KEY"
         )
     if not key:
-        raise GroqServiceError("Groq API key is empty.")
+        raise GroqServiceError("Please enter your Groq API key.", code="MISSING_API_KEY")
     return key
 
 
-def get_groq_client(api_key: str | None = None) -> Groq:
-    """Lazily create and reuse a single Groq client, or create a new one if api_key is provided."""
-    if api_key:
+def get_groq_client(api_provider: str, api_key: str | None = None) -> Groq:
+    """Lazily create and reuse a single Groq client, or create a new one if api_provider is user."""
+    if api_provider == "user":
+        if not api_key or not api_key.strip():
+            raise GroqServiceError("Please enter your Groq API key.", code="MISSING_API_KEY")
         clean_key = sanitize_api_key(api_key)
         return Groq(api_key=clean_key)
 
@@ -71,10 +84,11 @@ def chat_completion(
     temperature: float = 0.6,
     max_tokens: int = 700,
     json_mode: bool = False,
+    api_provider: str = "evalynx",
     api_key: str | None = None,
 ) -> str:
     """Run a chat completion and return the raw text content."""
-    client = get_groq_client(api_key)
+    client = get_groq_client(api_provider, api_key)
     try:
         response = client.chat.completions.create(
             model=_settings.groq_model,
@@ -85,13 +99,31 @@ def chat_completion(
         )
     except GroqServiceError:
         raise  # re-raise sanitize errors without wrapping
+    except AuthenticationError as exc:
+        is_custom = api_provider == "user"
+        msg = "Invalid Groq API key. Please check your key and try again." if is_custom else "Evalynx AI authentication failed. The configured API key may be invalid or expired."
+        raise GroqServiceError(msg, code="INVALID_API_KEY") from exc
+    except RateLimitError as exc:
+        is_custom = api_provider == "user"
+        msg = "Your Groq API key has reached its rate limit. Please try again later." if is_custom else "Evalynx AI limit has been reached. Please try again later or use your own Groq API key."
+        raise GroqServiceError(msg, code="RATE_LIMITED") from exc
+    except APITimeoutError as exc:
+        raise GroqServiceError("Unable to reach the AI service due to a timeout. Please try again in a moment.", code="AI_TIMEOUT") from exc
+    except APIConnectionError as exc:
+        raise GroqServiceError("Unable to connect to the AI service. Please try again.", code="AI_SERVICE_UNAVAILABLE") from exc
+    except APIStatusError as exc:
+        is_custom = api_provider == "user"
+        if exc.status_code == 403 or "quota" in str(exc).lower() or "limit" in str(exc).lower():
+            msg = "Your Groq API key has reached its usage limit." if is_custom else "Evalynx AI limit has been reached. Please try again later or use your own Groq API key."
+            raise GroqServiceError(msg, code="QUOTA_EXCEEDED") from exc
+        raise GroqServiceError(f"AI service error: {exc.message}", code="AI_REQUEST_FAILED") from exc
     except Exception as exc:  # network / auth / rate limit / etc.
         logger.exception("Groq chat completion failed")
-        raise GroqServiceError(str(exc)) from exc
+        raise GroqServiceError(str(exc), code="AI_REQUEST_FAILED") from exc
 
     content = response.choices[0].message.content
     if not content:
-        raise GroqServiceError("Groq returned an empty response")
+        raise GroqServiceError("Groq returned an empty response", code="AI_REQUEST_FAILED")
     return content
 
 
@@ -100,6 +132,7 @@ def chat_completion_json(
     *,
     temperature: float = 0.4,
     max_tokens: int = 700,
+    api_provider: str = "evalynx",
     api_key: str | None = None,
 ) -> dict[str, Any]:
     """Run a chat completion and parse the result as JSON.
@@ -108,7 +141,7 @@ def chat_completion_json(
     JSON in prose, so a minor formatting slip doesn't crash the interview.
     """
     raw = chat_completion(
-        messages, temperature=temperature, max_tokens=max_tokens, json_mode=True, api_key=api_key
+        messages, temperature=temperature, max_tokens=max_tokens, json_mode=True, api_provider=api_provider, api_key=api_key
     )
     try:
         return json.loads(raw)
@@ -120,4 +153,4 @@ def chat_completion_json(
             except json.JSONDecodeError:
                 pass
         logger.error("Could not parse JSON from Groq response: %s", raw)
-        raise GroqServiceError("Groq returned malformed JSON")
+        raise GroqServiceError("Groq returned malformed JSON", code="AI_REQUEST_FAILED")

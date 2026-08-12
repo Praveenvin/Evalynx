@@ -1,7 +1,7 @@
 export type InterviewSource = "resume" | "role";
 export type InterviewMode = "standard" | "dynamic";
 export type AnswerMethod = "voice" | "text";
-export type ApiProvider = "custom" | "builtin";
+export type ApiProvider = "user" | "evalynx";
 
 export type InterviewState =
   | "idle"

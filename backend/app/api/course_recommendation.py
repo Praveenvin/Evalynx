@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.schemas import CourseRecommendationResponse, StudentProfile
 from app.services.course_recommendation.recommendation_service import generate_recommendation
+from app.services.llm.groq_client import GroqServiceError
 from app.models.course_recommendation import CourseRecommendationHistoryModel, RecommendedCoursePathModel
 
 router = APIRouter(prefix="/api/course-recommendation", tags=["course-recommendation"])
@@ -14,6 +15,9 @@ async def recommend(student: StudentProfile, db: Session = Depends(get_db)):
     if not student.career_goal.strip():
         raise HTTPException(400, "career_goal is required.")
 
+    if student.api_provider == "user" and (not student.groq_api_key or not student.groq_api_key.strip()):
+        raise GroqServiceError("Please enter your Groq API key.", code="MISSING_API_KEY")
+
     try:
         result = generate_recommendation(
             name=student.name,
@@ -22,8 +26,11 @@ async def recommend(student: StudentProfile, db: Session = Depends(get_db)):
             career_goal=student.career_goal,
             current_skills=student.current_skills,
             interests=student.interests,
+            api_provider=student.api_provider,
             api_key=student.groq_api_key,
         )
+    except GroqServiceError:
+        raise
     except Exception as exc:  # defensive: never let this endpoint 500 silently
         raise HTTPException(502, f"Could not generate a recommendation: {exc}") from exc
 

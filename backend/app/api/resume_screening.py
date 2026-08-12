@@ -18,6 +18,7 @@ from app.core.database import get_db
 from app.services.resume_screening.batch_screening import (
     BatchScreeningService,
 )
+from app.services.llm.groq_client import GroqServiceError
 
 
 router = APIRouter(
@@ -40,8 +41,15 @@ async def screen_resumes(
         str | None,
         Form(),
     ] = None,
+    api_provider: Annotated[
+        str,
+        Form(),
+    ] = "evalynx",
     db: Session = Depends(get_db),
 ):
+    if api_provider == "user" and (not groq_api_key or not groq_api_key.strip()):
+        raise GroqServiceError("Please enter your Groq API key.", code="MISSING_API_KEY")
+
     if not resumes:
         raise HTTPException(
             status_code=400,
@@ -74,6 +82,7 @@ async def screen_resumes(
             directory=str(temp_dir),
             job_description=job_description,
             top_k=5,
+            api_provider=api_provider,
             api_key=groq_api_key,
         )
 

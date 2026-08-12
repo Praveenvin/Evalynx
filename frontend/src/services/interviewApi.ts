@@ -20,6 +20,7 @@ export async function startInterview(
   formData.append("duration", String(payload.duration));
   formData.append("question_count", String(payload.question_count));
 
+  formData.append("api_provider", payload.api_provider || "evalynx");
   if (payload.groq_api_key) {
     formData.append("groq_api_key", payload.groq_api_key);
   }

@@ -14,6 +14,10 @@ from app.api.course_recommendation import (
     router as course_recommendation_router,
 )
 
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from app.services.llm.groq_client import GroqServiceError
+
 app = FastAPI(
     title="Evalynx API",
     description=(
@@ -21,6 +25,18 @@ app = FastAPI(
     ),
     version="1.0.0",
 )
+
+@app.exception_handler(GroqServiceError)
+async def groq_service_error_handler(request: Request, exc: GroqServiceError):
+    return JSONResponse(
+        status_code=400 if exc.code in ["INVALID_API_KEY", "MISSING_API_KEY", "RATE_LIMITED", "QUOTA_EXCEEDED"] else 502,
+        content={
+            "error": {
+                "code": exc.code,
+                "message": str(exc)
+            }
+        }
+    )
 
 
 # -------------------------------------------------------------------

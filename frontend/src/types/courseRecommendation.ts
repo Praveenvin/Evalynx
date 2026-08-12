@@ -5,6 +5,7 @@ export interface StudentProfile {
   career_goal: string;
   current_skills: string[];
   interests: string[];
+  api_provider: "user" | "evalynx";
   groq_api_key?: string;
 }
 
@@ -25,4 +26,5 @@ export interface CourseRecommendationResponse {
   skill_gaps: string[];
   learning_path: LearningPathStep[];
   summary: string;
+  goal_supported: boolean;
 }

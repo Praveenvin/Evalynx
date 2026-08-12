@@ -42,6 +42,12 @@ class InterviewNotFoundError(Exception):
 
 class InterviewCompleteError(Exception):
     pass
+
+_session_auth: dict[str, dict[str, str | None]] = {}
+
+def get_session_auth(session_id: str) -> dict[str, str | None]:
+    return _session_auth.get(session_id, {"api_provider": "evalynx", "api_key": None})
+
 def start_interview(
     db: Session,
     *,
@@ -52,6 +58,7 @@ def start_interview(
     mode: str,
     duration_minutes: int,
     question_count: int,
+    api_provider: str = "evalynx",
     api_key: str | None = None,
 ) -> tuple[InterviewSession, str]:
     session = create_session(
@@ -63,8 +70,12 @@ def start_interview(
         mode=mode,
         duration_minutes=duration_minutes,
         total_questions=question_count,
-        api_key=api_key,
     )
+
+    _session_auth[session.id] = {
+        "api_provider": api_provider,
+        "api_key": api_key,
+    }
 
     if mode == "standard":
         bank = _generate_question_bank(
@@ -93,12 +104,17 @@ def submit_answer(db: Session, session_id: str, answer: str) -> dict:
     current_turn = session.current_turn
     current_turn.answer = answer
 
+    auth = _session_auth.get(session.id, {"api_provider": "evalynx", "api_key": None})
+    api_provider = auth["api_provider"]
+    api_key = auth["api_key"]
+
     evaluation = _evaluate_answer(
         role=session.role,
         skills=session.skills,
         question=current_turn.question,
         answer=answer,
-        api_key=session.api_key,
+        api_provider=api_provider,
+        api_key=api_key,
     )
     current_turn.evaluation = evaluation
 
@@ -132,12 +148,17 @@ def build_final_evaluation(session: InterviewSession) -> dict:
     evaluations = session.evaluations()
     scores = calculate_final_scores(evaluations)
 
+    auth = _session_auth.get(session.id, {"api_provider": "evalynx", "api_key": None})
+    api_provider = auth["api_provider"]
+    api_key = auth["api_key"]
+
     try:
         summary_response = chat_completion_json(
             build_final_summary_prompt(role=session.role, per_answer_evaluations=evaluations),
             temperature=0.5,
             max_tokens=500,
-            api_key=session.api_key,
+            api_provider=api_provider,
+            api_key=api_key,
         )
         strengths = summary_response.get("strengths", [])
         improvements = summary_response.get("areas_to_improve", [])
@@ -164,7 +185,7 @@ def build_final_evaluation(session: InterviewSession) -> dict:
 
 
 def _generate_first_question(
-    *, role: str, skills: list[str], resume_text: str | None, mode: str, api_key: str | None = None
+    *, role: str, skills: list[str], resume_text: str | None, mode: str, api_provider: str = "evalynx", api_key: str | None = None
 ) -> str:
     try:
         return chat_completion(
@@ -173,6 +194,7 @@ def _generate_first_question(
             ),
             temperature=0.7,
             max_tokens=150,
+            api_provider=api_provider,
             api_key=api_key,
         ).strip()
     except GroqServiceError:
@@ -181,7 +203,7 @@ def _generate_first_question(
 
 
 def _generate_question_bank(
-    *, role: str, skills: list[str], resume_text: str | None, question_count: int, api_key: str | None = None
+    *, role: str, skills: list[str], resume_text: str | None, question_count: int, api_provider: str = "evalynx", api_key: str | None = None
 ) -> list[str]:
     try:
         data = chat_completion_json(
@@ -193,6 +215,7 @@ def _generate_question_bank(
             ),
             temperature=0.7,
             max_tokens=1200,
+            api_provider=api_provider,
             api_key=api_key,
         )
         questions = [q for q in data.get("questions", []) if isinstance(q, str) and q.strip()]
@@ -212,6 +235,10 @@ def _next_question(session: InterviewSession) -> str:
         return _fallback_question(session.role)
 
     current_turn = session.current_turn
+    auth = _session_auth.get(session.id, {"api_provider": "evalynx", "api_key": None})
+    api_provider = auth["api_provider"]
+    api_key = auth["api_key"]
+
     try:
         return chat_completion(
             build_next_question_prompt(
@@ -224,19 +251,21 @@ def _next_question(session: InterviewSession) -> str:
             ),
             temperature=0.7,
             max_tokens=150,
-            api_key=session.api_key,
+            api_provider=api_provider,
+            api_key=api_key,
         ).strip()
     except GroqServiceError:
         logger.warning("Dynamic next-question generation failed, using fallback question")
         return _fallback_question(session.role)
 
 
-def _evaluate_answer(*, role: str, skills: list[str], question: str, answer: str, api_key: str | None = None) -> dict:
+def _evaluate_answer(*, role: str, skills: list[str], question: str, answer: str, api_provider: str = "evalynx", api_key: str | None = None) -> dict:
     try:
         result = chat_completion_json(
             build_answer_evaluation_prompt(role=role, skills=skills, question=question, answer=answer),
             temperature=0.3,
             max_tokens=500,
+            api_provider=api_provider,
             api_key=api_key,
         )
         return {

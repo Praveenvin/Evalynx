@@ -23,6 +23,7 @@ from app.services.mock_interview.interview_service import (
     build_final_evaluation,
     start_interview,
     submit_answer,
+    get_session_auth,
 )
 
 from app.services.llm.speech_service import (
@@ -60,9 +61,12 @@ async def start(
     duration: int = Form(...),
     question_count: int = Form(...),
     resume: UploadFile | None = File(None),
+    api_provider: str = Form("evalynx"),
     groq_api_key: str | None = Form(None),
     db: Session = Depends(get_db),
 ):
+    if api_provider == "user" and (not groq_api_key or not groq_api_key.strip()):
+        raise GroqServiceError("Please enter your Groq API key.", code="MISSING_API_KEY")
     """
     Start a mock interview.
 
@@ -108,26 +112,18 @@ async def start(
                 detail="Could not extract any text from the resume PDF.",
             )
 
-    try:
-
-        session, first_question = start_interview(
-            db,
-            source=source,
-            role=role,
-            skills=parsed_skills,
-            resume_text=resume_text,
-            mode=mode,
-            duration_minutes=duration,
-            question_count=question_count,
-            api_key=groq_api_key,
-        )
-
-    except GroqServiceError as exc:
-
-        raise HTTPException(
-            status_code=502,
-            detail=f"AI service is unavailable: {exc}",
-        ) from exc
+    session, first_question = start_interview(
+        db,
+        source=source,
+        role=role,
+        skills=parsed_skills,
+        resume_text=resume_text,
+        mode=mode,
+        duration_minutes=duration,
+        question_count=question_count,
+        api_provider=api_provider,
+        api_key=groq_api_key,
+    )
 
     return StartInterviewResponse(
         session_id=session.id,
@@ -176,13 +172,6 @@ async def answer(
             detail="This interview has already been completed.",
         ) from exc
 
-    except GroqServiceError as exc:
-
-        raise HTTPException(
-            status_code=502,
-            detail=f"AI service is unavailable: {exc}",
-        ) from exc
-
     return result
 
 
@@ -212,20 +201,13 @@ async def voice_answer(
             detail="Empty recording received.",
         )
 
-    try:
-
-        text = transcribe_audio(
-            audio_bytes,
-            filename=audio.filename or "answer.webm",
-            api_key=session.api_key,
-        )
-
-    except GroqServiceError as exc:
-
-        raise HTTPException(
-            status_code=502,
-            detail=f"Transcription failed: {exc}",
-        ) from exc
+    auth = get_session_auth(session_id)
+    text = transcribe_audio(
+        audio_bytes,
+        filename=audio.filename or "answer.webm",
+        api_provider=auth["api_provider"],
+        api_key=auth["api_key"],
+    )
 
     return VoiceAnswerResponse(
         text=text
@@ -279,19 +261,12 @@ async def speak(
             detail="Interview session not found or expired.",
         )
 
-    try:
-
-        audio_bytes = synthesize_speech(
-            payload.text,
-            api_key=session.api_key,
-        )
-
-    except GroqServiceError as exc:
-
-        raise HTTPException(
-            status_code=502,
-            detail=f"Speech synthesis failed: {exc}",
-        ) from exc
+    auth = get_session_auth(session_id)
+    audio_bytes = synthesize_speech(
+        payload.text,
+        api_provider=auth["api_provider"],
+        api_key=auth["api_key"],
+    )
 
     return Response(
         content=audio_bytes,
@@ -318,17 +293,8 @@ async def complete(
     session.is_complete = True
     save_session(db, session)
 
-    try:
-
-        final = build_final_evaluation(
-            session
-        )
-
-    except GroqServiceError as exc:
-
-        raise HTTPException(
-            status_code=502,
-            detail=f"AI service is unavailable: {exc}",
-        ) from exc
+    final = build_final_evaluation(
+        session
+    )
 
     return final
